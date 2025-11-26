@@ -87,9 +87,45 @@ function renderizarCupones() {
     
     tbody.innerHTML = '';
     
+    // Obtener fecha valuación para comparar
+    const fechaValuacionInput = document.getElementById('fechaValuacion');
+    const fechaValuacionStr = fechaValuacionInput?.value || '';
+    let fechaValuacionDate = null;
+    
+    if (fechaValuacionStr) {
+        try {
+            fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+        } catch (e) {
+            console.warn('Error al parsear fecha valuación:', e);
+        }
+    }
+    
     cuponesData.forEach(cupon => {
         const row = document.createElement('tr');
         row.dataset.cuponId = cupon.id;
+        
+        // Verificar si alguna fecha del cupón es mayor a fecha valuación
+        let esFuturo = false;
+        if (fechaValuacionDate) {
+            // Comparar fechaLiquid (fecha de liquidación) con fecha valuación
+            if (cupon.fechaLiquid) {
+                try {
+                    const fechaLiquidDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaLiquid));
+                    if (fechaLiquidDate && fechaLiquidDate > fechaValuacionDate) {
+                        esFuturo = true;
+                    }
+                } catch (e) {
+                    // Ignorar errores de parsing
+                }
+            }
+        }
+        
+        // Aplicar clase si es futuro (los estilos se manejan con CSS)
+        if (esFuturo) {
+            row.classList.add('cupon-futuro');
+        } else {
+            row.classList.remove('cupon-futuro');
+        }
         
         row.innerHTML = `
             <td>

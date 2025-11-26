@@ -538,6 +538,23 @@ select.input-sm {
     background: var(--hover-bg);
 }
 
+.cupones-table tr.cupon-futuro {
+    opacity: 0.75;
+    pointer-events: none;
+    background-color: #fafafa;
+}
+
+.cupones-table tr.cupon-futuro td {
+    background-color: #fafafa;
+    color: #70757a;
+}
+
+.cupones-table tr.cupon-futuro .input-table {
+    background-color: #fafafa;
+    color: #70757a;
+    cursor: not-allowed;
+}
+
 .cupones-table .input-table {
     width: 100%;
     min-width: 80px;
