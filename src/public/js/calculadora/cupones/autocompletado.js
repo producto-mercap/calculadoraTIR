@@ -48,7 +48,11 @@ async function crearFilaInversion() {
     fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.abs(datos.intervaloFin) + 30); // Margen para cargar feriados
     const fechaHasta = formatearFechaInput(fechaHastaDate);
     
-    const feriados = await window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
+    // Obtener feriados desde cache, o cargar desde BD si no hay cache
+    let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
+    if (!feriados || feriados.length === 0) {
+        feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
+    }
     let finalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(fechaCompraDate, datos.intervaloFin, feriados);
     
     // Validación: si hay fecha valuación y finalIntervalo es mayor, ajustar
@@ -65,7 +69,11 @@ async function crearFilaInversion() {
     const fechaHastaCERDate = new Date(finalIntervalo);
     fechaHastaCERDate.setDate(fechaHastaCERDate.getDate() + 30); // Margen
     const fechaHastaCER = formatearFechaInput(fechaHastaCERDate);
-    const valoresCER = await window.cuponesCER.obtenerValoresCER(fechaDesdeCER, fechaHastaCER);
+    // Obtener valores CER desde cache, o cargar desde BD si no hay cache
+    let valoresCER = window.cuponesCER.obtenerValoresCER(fechaDesdeCER, fechaHastaCER);
+    if (!valoresCER || valoresCER.length === 0) {
+        valoresCER = await window.cuponesCER.cargarValoresCERDesdeBD(fechaDesdeCER, fechaHastaCER);
+    }
     const valorCERFinal = window.cuponesCER.buscarValorCERPorFecha(finalIntervalo, valoresCER);
     
     // Calcular flujo (negativo)
@@ -180,15 +188,27 @@ async function crearFilasCupones() {
         return [];
     }
     
-    // Cargar feriados UNA SOLA VEZ para todo el proceso
-    console.log(`[autocompletado] Cargando feriados desde ${fechaDesde} hasta ${fechaHasta}`);
-    const feriados = await window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
-    console.log(`[autocompletado] Feriados cargados: ${feriados.length} fechas`);
+    // Cargar feriados desde cache (ya deben estar cargados manualmente)
+    console.log(`[autocompletado] Obteniendo feriados desde cache: ${fechaDesde} hasta ${fechaHasta}`);
+    let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
     
-    // Cargar valores CER UNA SOLA VEZ para todo el proceso
-    console.log(`[autocompletado] Cargando valores CER desde ${fechaDesde} hasta ${fechaHasta}`);
-    const valoresCER = await window.cuponesCER.obtenerValoresCER(fechaDesde, fechaHasta);
-    console.log(`[autocompletado] Valores CER cargados: ${valoresCER.length} registros`);
+    // Si no hay cache, cargar desde BD manualmente
+    if (!feriados || feriados.length === 0) {
+        console.log(`[autocompletado] Cache vacío, cargando feriados desde BD...`);
+        feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
+    }
+    console.log(`[autocompletado] Feriados disponibles: ${feriados.length} fechas`);
+    
+    // Cargar valores CER desde cache (ya deben estar cargados manualmente)
+    console.log(`[autocompletado] Obteniendo valores CER desde cache: ${fechaDesde} hasta ${fechaHasta}`);
+    let valoresCER = window.cuponesCER.obtenerValoresCER(fechaDesde, fechaHasta);
+    
+    // Si no hay cache, cargar desde BD manualmente
+    if (!valoresCER || valoresCER.length === 0) {
+        console.log(`[autocompletado] Cache vacío, cargando valores CER desde BD...`);
+        valoresCER = await window.cuponesCER.cargarValoresCERDesdeBD(fechaDesde, fechaHasta);
+    }
+    console.log(`[autocompletado] Valores CER disponibles: ${valoresCER.length} registros`);
     
     // Crear filas de cupones
     const cupones = [];

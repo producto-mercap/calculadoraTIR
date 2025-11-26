@@ -7,61 +7,38 @@ let feriadosCache = null;
 let feriadosCacheFecha = null;
 
 /**
- * Obtener feriados desde la BD
+ * Obtener feriados desde el cache (NO consulta BD automáticamente)
+ * @param {string} fechaDesde - Fecha inicio en formato YYYY-MM-DD
+ * @param {string} fechaHasta - Fecha fin en formato YYYY-MM-DD
+ * @returns {Array} Array de fechas de feriados en formato YYYY-MM-DD (solo del cache)
+ */
+function obtenerFeriados(fechaDesde, fechaHasta) {
+    // Solo usar cache, NO consultar BD automáticamente
+    if (feriadosCache && feriadosCacheFecha) {
+        const cacheDesde = crearFechaDesdeString(feriadosCacheFecha.desde);
+        const cacheHasta = crearFechaDesdeString(feriadosCacheFecha.hasta);
+        const desde = crearFechaDesdeString(fechaDesde);
+        const hasta = crearFechaDesdeString(fechaHasta);
+        
+        // Si el cache cubre el rango solicitado, usar cache
+        if (desde >= cacheDesde && hasta <= cacheHasta) {
+            return feriadosCache;
+        }
+    }
+    
+    // Si no hay cache o no cubre el rango, retornar array vacío
+    // El usuario debe cargar los datos manualmente primero
+    return [];
+}
+
+/**
+ * Cargar feriados desde BD manualmente (para poblar el cache)
  * @param {string} fechaDesde - Fecha inicio en formato YYYY-MM-DD
  * @param {string} fechaHasta - Fecha fin en formato YYYY-MM-DD
  * @returns {Promise<Array>} Array de fechas de feriados en formato YYYY-MM-DD
  */
-async function obtenerFeriados(fechaDesde, fechaHasta) {
+async function cargarFeriadosDesdeBD(fechaDesde, fechaHasta) {
     try {
-        // Usar cache si está disponible y cubre el rango solicitado
-        if (feriadosCache && feriadosCacheFecha) {
-            const cacheDesde = crearFechaDesdeString(feriadosCacheFecha.desde);
-            const cacheHasta = crearFechaDesdeString(feriadosCacheFecha.hasta);
-            const desde = crearFechaDesdeString(fechaDesde);
-            const hasta = crearFechaDesdeString(fechaHasta);
-            
-            // Si el cache cubre el rango solicitado, usar cache
-            if (desde >= cacheDesde && hasta <= cacheHasta) {
-                return feriadosCache;
-            }
-            
-            // Si el rango solicitado es más amplio, expandir el cache
-            // o si se solapa parcialmente, recargar con el rango más amplio
-            if (desde < cacheDesde || hasta > cacheHasta) {
-                // Expandir el rango del cache para incluir ambos rangos
-                const nuevoDesde = desde < cacheDesde ? desde : feriadosCacheFecha.desde;
-                const nuevoHasta = hasta > cacheHasta ? hasta : feriadosCacheFecha.hasta;
-                
-                // Asegurar que las fechas estén en formato YYYY-MM-DD (strings)
-                const desdeFormateado = typeof nuevoDesde === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(nuevoDesde) 
-                    ? nuevoDesde 
-                    : (nuevoDesde instanceof Date ? formatearFechaInput(nuevoDesde) : String(nuevoDesde));
-                const hastaFormateado = typeof nuevoHasta === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(nuevoHasta) 
-                    ? nuevoHasta 
-                    : (nuevoHasta instanceof Date ? formatearFechaInput(nuevoHasta) : String(nuevoHasta));
-                
-                // Recargar con el rango expandido
-                const response = await fetch(`/api/feriados/bd?desde=${encodeURIComponent(desdeFormateado)}&hasta=${encodeURIComponent(hastaFormateado)}`);
-                const result = await response.json();
-                
-                if (result.success && result.datos) {
-                    const fechas = result.datos.map(feriado => {
-                        let fecha = feriado.fecha;
-                        if (typeof fecha === 'string' && fecha.includes('T')) {
-                            fecha = fecha.split('T')[0];
-                        }
-                        return fecha;
-                    });
-                    
-                    feriadosCache = fechas;
-                    feriadosCacheFecha = { desde: nuevoDesde, hasta: nuevoHasta };
-                    return fechas;
-                }
-            }
-        }
-        
-        // Si no hay cache o no cubre el rango, cargar desde BD
         // Asegurar que las fechas estén en formato YYYY-MM-DD (strings)
         const desdeFormateado = typeof fechaDesde === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaDesde) 
             ? fechaDesde 
@@ -92,7 +69,7 @@ async function obtenerFeriados(fechaDesde, fechaHasta) {
         
         return [];
     } catch (error) {
-        console.error('Error al obtener feriados:', error);
+        console.error('Error al cargar feriados desde BD:', error);
         return [];
     }
 }
@@ -133,7 +110,7 @@ function obtenerProximoDiaHabil(fecha, feriados = []) {
 }
 
 /**
- * Obtener el próximo día hábil a partir de una fecha (versión async que carga feriados)
+ * Obtener el próximo día hábil a partir de una fecha (versión async que carga feriados si es necesario)
  * @param {Date} fecha - Fecha de inicio
  * @param {number} diasAdelante - Días a buscar adelante para cargar feriados (default: 30)
  * @returns {Promise<Date>} Próximo día hábil
@@ -144,7 +121,11 @@ async function obtenerProximoDiaHabilAsync(fecha, diasAdelante = 30) {
     fechaHastaDate.setDate(fechaHastaDate.getDate() + diasAdelante);
     const fechaHasta = formatearFechaInput(fechaHastaDate);
     
-    const feriados = await obtenerFeriados(fechaDesde, fechaHasta);
+    // Obtener feriados desde cache, o cargar desde BD si no hay cache
+    let feriados = obtenerFeriados(fechaDesde, fechaHasta);
+    if (!feriados || feriados.length === 0) {
+        feriados = await cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
+    }
     return obtenerProximoDiaHabil(fecha, feriados);
 }
 
@@ -173,7 +154,7 @@ function sumarDiasHabiles(fecha, dias, feriados = []) {
 }
 
 /**
- * Sumar o restar días hábiles a una fecha (versión async que carga feriados)
+ * Sumar o restar días hábiles a una fecha (versión async que carga feriados si es necesario)
  * @param {Date} fecha - Fecha de inicio
  * @param {number} dias - Número de días a sumar (positivo) o restar (negativo)
  * @param {number} margenDias - Margen de días para cargar feriados (default: 60)
@@ -196,13 +177,18 @@ async function sumarDiasHabilesAsync(fecha, dias, margenDias = 60) {
     const fechaDesde = formatearFechaInput(fechaDesdeDate);
     const fechaHasta = formatearFechaInput(fechaHastaDate);
     
-    const feriados = await obtenerFeriados(fechaDesde, fechaHasta);
+    // Obtener feriados desde cache, o cargar desde BD si no hay cache
+    let feriados = obtenerFeriados(fechaDesde, fechaHasta);
+    if (!feriados || feriados.length === 0) {
+        feriados = await cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
+    }
     return sumarDiasHabiles(fecha, dias, feriados);
 }
 
 // Exportar funciones
 window.cuponesDiasHabiles = {
     obtenerFeriados,
+    cargarFeriadosDesdeBD,
     esDiaHabil,
     obtenerProximoDiaHabil,
     obtenerProximoDiaHabilAsync,

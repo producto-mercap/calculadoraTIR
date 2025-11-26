@@ -8,12 +8,51 @@ let cerCache = null;
 let cerCacheFecha = null;
 
 /**
- * Obtener valores CER desde la BD
+ * Obtener valores CER desde el cache (NO consulta BD automáticamente)
+ * @param {string} fechaDesde - Fecha inicio en formato YYYY-MM-DD
+ * @param {string} fechaHasta - Fecha fin en formato YYYY-MM-DD
+ * @returns {Array} Array de objetos { fecha: 'YYYY-MM-DD', valor: number } (solo del cache)
+ */
+function obtenerValoresCER(fechaDesde, fechaHasta) {
+    // Normalizar fechas a formato YYYY-MM-DD (strings)
+    const desdeFormateado = typeof fechaDesde === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaDesde) 
+        ? fechaDesde 
+        : (fechaDesde instanceof Date ? formatearFechaInput(fechaDesde) : String(fechaDesde));
+    const hastaFormateado = typeof fechaHasta === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaHasta) 
+        ? fechaHasta 
+        : (fechaHasta instanceof Date ? formatearFechaInput(fechaHasta) : String(fechaHasta));
+    
+    // Validar formato
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desdeFormateado) || !/^\d{4}-\d{2}-\d{2}$/.test(hastaFormateado)) {
+        console.error('[cuponesCER] Error: Fechas no están en formato YYYY-MM-DD:', { desdeFormateado, hastaFormateado });
+        return [];
+    }
+    
+    // Solo usar cache, NO consultar BD automáticamente
+    if (cerCache && cerCacheFecha) {
+        const cacheDesde = crearFechaDesdeString(cerCacheFecha.desde);
+        const cacheHasta = crearFechaDesdeString(cerCacheFecha.hasta);
+        const desde = crearFechaDesdeString(desdeFormateado);
+        const hasta = crearFechaDesdeString(hastaFormateado);
+        
+        // Si el cache cubre el rango solicitado, usar cache
+        if (desde >= cacheDesde && hasta <= cacheHasta) {
+            return cerCache;
+        }
+    }
+    
+    // Si no hay cache o no cubre el rango, retornar array vacío
+    // El usuario debe cargar los datos manualmente primero
+    return [];
+}
+
+/**
+ * Cargar valores CER desde BD manualmente (para poblar el cache)
  * @param {string} fechaDesde - Fecha inicio en formato YYYY-MM-DD
  * @param {string} fechaHasta - Fecha fin en formato YYYY-MM-DD
  * @returns {Promise<Array>} Array de objetos { fecha: 'YYYY-MM-DD', valor: number }
  */
-async function obtenerValoresCER(fechaDesde, fechaHasta) {
+async function cargarValoresCERDesdeBD(fechaDesde, fechaHasta) {
     try {
         // Normalizar fechas a formato YYYY-MM-DD (strings)
         const desdeFormateado = typeof fechaDesde === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaDesde) 
@@ -29,42 +68,6 @@ async function obtenerValoresCER(fechaDesde, fechaHasta) {
             return [];
         }
         
-        // Usar cache si está disponible y cubre el rango solicitado
-        if (cerCache && cerCacheFecha) {
-            const cacheDesde = crearFechaDesdeString(cerCacheFecha.desde);
-            const cacheHasta = crearFechaDesdeString(cerCacheFecha.hasta);
-            const desde = crearFechaDesdeString(desdeFormateado);
-            const hasta = crearFechaDesdeString(hastaFormateado);
-            
-            // Si el cache cubre el rango solicitado, usar cache
-            if (desde >= cacheDesde && hasta <= cacheHasta) {
-                return cerCache;
-            }
-            
-            // Si el rango solicitado es más amplio, expandir el cache
-            if (desde < cacheDesde || hasta > cacheHasta) {
-                // Expandir el rango del cache para incluir ambos rangos
-                const nuevoDesde = desde < cacheDesde ? desdeFormateado : cerCacheFecha.desde;
-                const nuevoHasta = hasta > cacheHasta ? hastaFormateado : cerCacheFecha.hasta;
-                
-                // Recargar con el rango expandido
-                const response = await fetch(`/api/cer/bd?desde=${encodeURIComponent(nuevoDesde)}&hasta=${encodeURIComponent(nuevoHasta)}`);
-                const result = await response.json();
-                
-                if (result.success && result.datos) {
-                    const valores = result.datos.map(cer => ({
-                        fecha: cer.fecha.includes('T') ? cer.fecha.split('T')[0] : cer.fecha,
-                        valor: parseFloat(cer.valor) || 0
-                    }));
-                    
-                    cerCache = valores;
-                    cerCacheFecha = { desde: nuevoDesde, hasta: nuevoHasta };
-                    return valores;
-                }
-            }
-        }
-        
-        // Si no hay cache o no cubre el rango, cargar desde BD
         const response = await fetch(`/api/cer/bd?desde=${encodeURIComponent(desdeFormateado)}&hasta=${encodeURIComponent(hastaFormateado)}`);
         const result = await response.json();
         
@@ -84,7 +87,7 @@ async function obtenerValoresCER(fechaDesde, fechaHasta) {
         
         return [];
     } catch (error) {
-        console.error('Error al obtener valores CER:', error);
+        console.error('Error al cargar valores CER desde BD:', error);
         return [];
     }
 }
@@ -185,6 +188,7 @@ async function buscarValorCERPorFechaAsync(fecha, margenDias = 30) {
 // Exportar funciones
 window.cuponesCER = {
     obtenerValoresCER,
+    cargarValoresCERDesdeBD,
     buscarValorCERPorFecha,
     buscarValorCERPorFechaAsync
 };

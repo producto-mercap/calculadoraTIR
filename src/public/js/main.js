@@ -155,15 +155,15 @@ function abrirDatePicker(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
     
-    // Cerrar otros date pickers
-    document.querySelectorAll('.date-picker-popup').forEach(popup => {
-        if (popup.id !== `datePicker${inputId.charAt(0).toUpperCase() + inputId.slice(1)}`) {
-            popup.style.display = 'none';
-        }
-    });
-    
     const popupId = `datePicker${inputId.charAt(0).toUpperCase() + inputId.slice(1)}`;
     let popup = document.getElementById(popupId);
+    
+    // Cerrar otros date pickers primero
+    document.querySelectorAll('.date-picker-popup').forEach(p => {
+        if (p.id !== popupId) {
+            p.style.display = 'none';
+        }
+    });
     
     if (!popup) {
         popup = document.createElement('div');
@@ -172,10 +172,8 @@ function abrirDatePicker(inputId) {
         input.parentElement.appendChild(popup);
     }
     
-    // Inicializar estado si no existe
-    if (!datePickerState.currentDate || isNaN(datePickerState.currentDate.getTime())) {
-        datePickerState.currentDate = new Date();
-    }
+    // Inicializar estado
+    datePickerState.currentDate = new Date();
     
     // Parsear fecha actual del input si existe
     const fechaActual = input.value;
@@ -190,36 +188,35 @@ function abrirDatePicker(inputId) {
                 datePickerState.currentDate = new Date(datePickerState.selectedDate);
             } else {
                 datePickerState.selectedDate = null;
-                datePickerState.currentDate = new Date();
             }
         } else {
             datePickerState.selectedDate = null;
-            datePickerState.currentDate = new Date();
         }
     } else {
         datePickerState.selectedDate = null;
-        datePickerState.currentDate = new Date();
     }
     
     datePickerState.inputId = inputId;
     datePickerState.mostrarSelectorAnio = false;
     
+    // Siempre mostrar el popup y renderizar
     renderizarDatePicker(popup);
     popup.style.display = 'block';
     
-    // Cerrar al hacer clic fuera (pero no cuando se hace clic dentro del popup)
+    // Registrar listener para cerrar al hacer clic fuera (solo una vez)
+    const cerrarHandler = (e) => {
+        // No cerrar si el clic es dentro del popup, en el input, o en el botón del calendario
+        if (popup.contains(e.target) || input.contains(e.target) || e.target.closest('.date-picker-icon-btn')) {
+            return;
+        }
+        popup.style.display = 'none';
+        document.removeEventListener('click', cerrarHandler);
+    };
+    
+    // Remover listeners anteriores y agregar uno nuevo
     setTimeout(() => {
-        document.addEventListener('click', function cerrarDatePicker(e) {
-            // No cerrar si el clic es dentro del popup o en el input o en el icono
-            if (!popup.contains(e.target) && !input.contains(e.target) && !e.target.closest('.date-picker-icon')) {
-                // Verificar que no sea un botón dentro del popup
-                if (!e.target.closest('.date-picker-nav-btn') && !e.target.closest('.date-picker-day') && !e.target.closest('.date-picker-year')) {
-                    popup.style.display = 'none';
-                    document.removeEventListener('click', cerrarDatePicker);
-                }
-            }
-        });
-    }, 0);
+        document.addEventListener('click', cerrarHandler);
+    }, 10);
 }
 
 function renderizarDatePicker(popup) {
@@ -458,8 +455,8 @@ function seleccionarFecha(año, mes, dia) {
         popup.style.display = 'none';
     }
     
-    // Limpiar el estado para evitar problemas al reabrir
-    datePickerState.inputId = null;
+    // NO limpiar inputId aquí para permitir reabrir el date picker
+    // El inputId se limpiará cuando se abra otro date picker o cuando se cierre manualmente
 }
 
 // Validar formato DD-MM-AAAA o DD/MM/AAAA (función global - acepta ambos)

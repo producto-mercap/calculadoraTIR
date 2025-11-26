@@ -328,12 +328,65 @@ function getCuponesData() {
     return cuponesData;
 }
 
+/**
+ * Actualizar solo el estilo de las filas según fecha valuación (sin reconstruir la tabla)
+ */
+function actualizarEstilosCupones() {
+    const tbody = document.getElementById('cuponesBody');
+    if (!tbody) return;
+    
+    // Obtener fecha valuación para comparar
+    const fechaValuacionInput = document.getElementById('fechaValuacion');
+    const fechaValuacionStr = fechaValuacionInput?.value || '';
+    let fechaValuacionDate = null;
+    
+    if (fechaValuacionStr) {
+        try {
+            fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+        } catch (e) {
+            console.warn('Error al parsear fecha valuación:', e);
+        }
+    }
+    
+    // Actualizar estilo de cada fila existente
+    const filas = tbody.querySelectorAll('tr');
+    filas.forEach(row => {
+        const cuponId = row.dataset.cuponId;
+        if (!cuponId) return;
+        
+        // Buscar el cupón en los datos
+        const cupon = cuponesData.find(c => c.id === cuponId);
+        if (!cupon) return;
+        
+        // Verificar si alguna fecha del cupón es mayor a fecha valuación
+        let esFuturo = false;
+        if (fechaValuacionDate && cupon.fechaLiquid) {
+            try {
+                const fechaLiquidDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaLiquid));
+                if (fechaLiquidDate && fechaLiquidDate > fechaValuacionDate) {
+                    esFuturo = true;
+                }
+            } catch (e) {
+                // Ignorar errores de parsing
+            }
+        }
+        
+        // Aplicar o remover clase
+        if (esFuturo) {
+            row.classList.add('cupon-futuro');
+        } else {
+            row.classList.remove('cupon-futuro');
+        }
+    });
+}
+
 // Exportar funciones globalmente
 window.cuponesModule = {
     cargarCupones,
     agregarFilaCupon,
     eliminarFilaCupon,
     renderizarCupones,
+    actualizarEstilosCupones,
     actualizarCupon,
     obtenerCupones,
     limpiarCupones,
