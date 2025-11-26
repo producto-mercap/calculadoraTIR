@@ -12,8 +12,69 @@
     <div class="app-container">
         <main class="main-content">
             <div class="content-area">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="margin-bottom: 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
                     <h1 class="page-title" style="margin: 0;">Calculadora</h1>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label class="form-label" style="font-size: 14px; margin: 0; white-space: nowrap;">Fecha Valuación:</label>
+                        <div class="date-input-wrapper" style="position: relative;">
+                            <input type="text" class="input input-sm date-input" id="fechaValuacion" placeholder="DD/MM/AAAA" maxlength="10" style="width: 140px;" />
+                            <button type="button" class="date-picker-icon-btn" onclick="abrirDatePicker('fechaValuacion')" title="Seleccionar fecha">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                            <div id="datePickerFechaValuacion" class="date-picker-popup" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Cupones (oculta inicialmente) -->
+                <div id="tablaCuponesContainer" style="display: none; margin-bottom: 24px;">
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h2 style="font-size: 20px; font-weight: 500; margin: 0; color: #e65100;">Cupones</h2>
+                            <button class="btn btn-primary" onclick="agregarFilaCupon()" style="min-width: auto;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                                <span>Agregar Cupón</span>
+                            </button>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="cupones-table" id="tablaCupones">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px; min-width: 50px;">Cupón</th>
+                                        <th>Fecha Inicio</th>
+                                        <th>Fecha Fin Dev</th>
+                                        <th>Fecha Liquid.</th>
+                                        <th>Inicio Intervalo</th>
+                                        <th>Final Intervalo</th>
+                                        <th>Valor CER Inicio</th>
+                                        <th>Valor CER Final</th>
+                                        <th>Day Count Factor</th>
+                                        <th>Amortiz.</th>
+                                        <th>Valor Residual</th>
+                                        <th>Amortiz. Ajustada</th>
+                                        <th>Renta Nominal</th>
+                                        <th>Renta TNA</th>
+                                        <th>Renta Ajustada</th>
+                                        <th>Factor Actualiz.</th>
+                                        <th>Pagos Actualiz.</th>
+                                        <th>Flujos</th>
+                                        <th>Flujos Desc.</th>
+                                        <th style="width: 80px; min-width: 80px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuponesBody">
+                                    <!-- Las filas se agregarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Contenedor de paneles: Datos de Partida y Especie -->
@@ -204,6 +265,16 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Botón Cargar Cupones abajo a la derecha -->
+                            <div style="display: flex; justify-content: flex-end; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                                <button class="btn btn-primary" onclick="cargarCupones()" id="btnCargarCupones">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                                    </svg>
+                                    <span>Cargar Cupones</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -214,6 +285,18 @@
     <script src="/js/main.js"></script>
     <script src="/js/utils/dateUtils.js"></script>
     <script src="/js/utils/formUtils.js"></script>
+    <!-- Módulos de cupones (estructura preparada para lógica compleja) -->
+    <script src="/js/calculadora/cupones/core.js"></script>
+    <script src="/js/calculadora/cupones/diasHabiles.js"></script>
+    <script src="/js/calculadora/cupones/cer.js"></script>
+    <script src="/js/calculadora/cupones/calculoCupones.js"></script>
+    <script src="/js/calculadora/cupones/autocompletado.js"></script>
+    <script src="/js/calculadora/cupones/calculos.js"></script>
+    <script src="/js/calculadora/cupones/fechas.js"></script>
+    <script src="/js/calculadora/cupones/validaciones.js"></script>
+    <!-- Compatibilidad: mantener cupones.js por ahora -->
+    <script src="/js/cupones.js"></script>
+    <script src="/js/calculadoraStorage.js"></script>
 </body>
 </html>
 

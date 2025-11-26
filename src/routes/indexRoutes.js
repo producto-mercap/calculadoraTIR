@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const calculadoraController = require('../controllers/calculadoraController');
+const cerController = require('../controllers/cerController');
+const tamarController = require('../controllers/tamarController');
+const badlarController = require('../controllers/badlarController');
+const feriadosController = require('../controllers/feriadosController');
 
 // Ruta principal - redirige a Calculadora
 router.get('/', (req, res) => {
@@ -9,10 +13,12 @@ router.get('/', (req, res) => {
 
 // Rutas de las 5 solapas
 router.get('/calculadora', calculadoraController.renderCalculadora);
-router.get('/cer', calculadoraController.renderCER);
-router.get('/tamar', calculadoraController.renderTAMAR);
-router.get('/badlar', calculadoraController.renderBADLAR);
-router.get('/feriados', calculadoraController.renderFeriados);
+router.get('/cer', cerController.renderCER);
+router.get('/tamar', tamarController.renderTAMAR);
+router.get('/badlar', badlarController.renderBADLAR);
+router.get('/feriados', feriadosController.renderFeriados);
 
 module.exports = router;
+
+
 

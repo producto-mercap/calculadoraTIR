@@ -436,13 +436,15 @@ function seleccionarFecha(año, mes, dia) {
     datePickerState.selectedDate = fecha;
     datePickerState.currentDate = new Date(fecha); // Actualizar currentDate también
     
-    // Formatear como DD-MM-AAAA
+    // Formatear como DD/MM/AAAA (usar / para inputs de calculadora, - para CER/TAMAR/BADLAR/Feriados)
     const diaStr = String(dia).padStart(2, '0');
     const mesStr = String(mes + 1).padStart(2, '0');
     const añoStr = String(año);
-    const fechaFormateada = `${diaStr}-${mesStr}-${añoStr}`;
-    
+    // Determinar separador según el input (si tiene clase date-input usa /, si no usa -)
     const input = document.getElementById(datePickerState.inputId);
+    const separador = input && input.classList.contains('date-input') ? '/' : '-';
+    const fechaFormateada = `${diaStr}${separador}${mesStr}${separador}${añoStr}`;
+    
     if (input) {
         input.value = fechaFormateada;
         input.dispatchEvent(new Event('input', { bubbles: true }));

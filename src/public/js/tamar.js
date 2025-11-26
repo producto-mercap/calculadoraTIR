@@ -1,36 +1,17 @@
 // JavaScript para la página TAMAR
 // Utiliza utilidades compartidas de dateUtils.js y formUtils.js
+// Las funciones compartidas deben estar cargadas antes de este archivo
 
-// Formatear fecha para mostrar (formato DD-MM-YYYY para TAMAR)
-function formatearFechaMostrar(fechaString) {
-    if (!fechaString) return '';
-    
-    // Si viene en formato YYYY-MM-DD, parsear directamente sin crear Date
-    if (typeof fechaString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaString)) {
-        const partes = fechaString.split('T')[0].split('-');
-        const year = partes[0];
-        const month = partes[1];
-        const day = partes[2];
-        return `${day}-${month}-${year}`;
-    }
-    
-    // Si viene en otro formato, crear fecha local (Argentina)
-    const fecha = crearFechaDesdeString(fechaString);
-    if (!fecha || isNaN(fecha.getTime())) return '';
-    
-    const day = String(fecha.getDate()).padStart(2, '0');
-    const month = String(fecha.getMonth() + 1).padStart(2, '0');
-    const year = fecha.getFullYear();
-    return `${day}-${month}-${year}`;
+// Wrapper para formatear fecha con guiones (formato TAMAR)
+// Usa la función compartida de dateUtils.js
+function formatearFechaMostrarTAMAR(fechaString) {
+    return formatearFechaMostrar(fechaString, '-');
 }
 
-// Formatear número para mostrar (específico para TAMAR con 4 decimales)
-function formatearNumero(numero) {
-    if (numero === null || numero === undefined) return '-';
-    return parseFloat(numero).toLocaleString('es-AR', {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4
-    });
+// Wrapper para formatear número con 4 decimales (formato TAMAR)
+// Usa la función compartida de formUtils.js
+function formatearNumeroTAMAR(numero) {
+    return formatearNumero(numero, 4);
 }
 
 // Cargar datos de TAMAR desde la API
@@ -171,8 +152,8 @@ function generarTablaTAMAR(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatearFechaMostrar(fecha)}</td>
-                <td style="text-align: right;">${formatearNumero(valor)}</td>
+                <td>${formatearFechaMostrarTAMAR(fecha)}</td>
+                <td style="text-align: right;">${formatearNumeroTAMAR(valor)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -185,7 +166,7 @@ function generarTablaTAMAR(datos, soloNuevos = false) {
             rowPromedio.style.fontWeight = '600';
             rowPromedio.innerHTML = `
                 <td style="font-weight: 600; color: var(--text-primary);">Promedio</td>
-                <td style="text-align: right; font-weight: 600; color: var(--primary-color);">${formatearNumero(promedio)}</td>
+                <td style="text-align: right; font-weight: 600; color: var(--primary-color);">${formatearNumeroTAMAR(promedio)}</td>
             `;
             tbody.appendChild(rowPromedio);
         }
@@ -384,17 +365,14 @@ if (typeof cerrarModalExportarCSV === 'undefined') {
 }
 
 if (typeof formatearFechaExportar === 'undefined') {
+    // Usa la función compartida de dateUtils.js con separador '/' para exportación
     window.formatearFechaExportar = function(fecha) {
         if (!fecha) return '';
         let fechaStr = fecha;
         if (typeof fecha === 'string' && fecha.includes('T')) {
             fechaStr = fecha.split('T')[0];
         }
-        if (typeof fechaStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaStr)) {
-            const partes = fechaStr.split('-');
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        }
-        return fechaStr;
+        return convertirFechaYYYYMMDDaDDMMAAAA(fechaStr, '/');
     };
 }
 

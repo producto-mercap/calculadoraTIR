@@ -157,12 +157,32 @@ function combinarFechaPagoConEmision(fechaPagoDDMM, fechaEmision) {
 }
 
 /**
- * Formatear fecha para mostrar (DD/MM/AAAA)
+ * Formatear fecha para mostrar (DD/MM/AAAA o DD-MM-AAAA)
+ * @param {string|Date} fechaString - Fecha en cualquier formato
+ * @param {string} separador - Separador a usar ('/' por defecto, '-' para CER/TAMAR/BADLAR)
+ * @returns {string} Fecha formateada
  */
-function formatearFechaMostrar(fechaString) {
+function formatearFechaMostrar(fechaString, separador = '/') {
     if (!fechaString) return '';
+    
+    // Si viene en formato YYYY-MM-DD, parsear directamente sin crear Date
+    if (typeof fechaString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaString)) {
+        const partes = fechaString.split('T')[0].split('-');
+        const year = partes[0];
+        const month = partes[1];
+        const day = partes[2];
+        return `${day}${separador}${month}${separador}${year}`;
+    }
+    
+    // Si viene en otro formato, crear fecha local (Argentina)
     const fecha = crearFechaDesdeString(fechaString);
     if (!fecha || isNaN(fecha.getTime())) return '';
-    return convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fecha));
+    
+    const day = String(fecha.getDate()).padStart(2, '0');
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const year = fecha.getFullYear();
+    return `${day}${separador}${month}${separador}${year}`;
 }
+
+
 

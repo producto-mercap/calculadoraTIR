@@ -95,7 +95,10 @@ calculadora2/
    NODE_ENV=development
    DATABASE_URL=postgresql://user:password@host/database?sslmode=require
    BCRA_API_URL=https://api.bcra.gob.ar/estadisticas/v4.0
+   FERIADOS_API_URL=https://api.argentinadatos.com/v1/feriados
    ```
+   
+   **Nota**: La API de feriados usa [ArgentinaDatos](https://argentinadatos.com/docs/operations/get-feriados.html) (gratuita, rango 2016-2025).
 
 4. **Iniciar servidor de desarrollo**:
    ```bash
@@ -121,6 +124,7 @@ calculadora2/
    - `DATABASE_URL`
    - `NODE_ENV=production`
    - `BCRA_API_URL=https://api.bcra.gob.ar/estadisticas/v4.0`
+   - `FERIADOS_API_URL=https://api.argentinadatos.com/v1/feriados` (opcional, ya es el default)
 3. El deploy se realizará automáticamente en cada push a la rama principal
 
 ## 🎨 Estilos

@@ -1,36 +1,17 @@
 // JavaScript para la página CER
 // Utiliza utilidades compartidas de dateUtils.js y formUtils.js
+// Las funciones compartidas deben estar cargadas antes de este archivo
 
-// Formatear fecha para mostrar (formato DD-MM-YYYY para CER)
-function formatearFechaMostrar(fechaString) {
-    if (!fechaString) return '';
-    
-    // Si viene en formato YYYY-MM-DD, parsear directamente sin crear Date
-    if (typeof fechaString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaString)) {
-        const partes = fechaString.split('T')[0].split('-');
-        const year = partes[0];
-        const month = partes[1];
-        const day = partes[2];
-        return `${day}-${month}-${year}`;
-    }
-    
-    // Si viene en otro formato, crear fecha local (Argentina)
-    const fecha = crearFechaDesdeString(fechaString);
-    if (!fecha || isNaN(fecha.getTime())) return '';
-    
-    const day = String(fecha.getDate()).padStart(2, '0');
-    const month = String(fecha.getMonth() + 1).padStart(2, '0');
-    const year = fecha.getFullYear();
-    return `${day}-${month}-${year}`;
+// Wrapper para formatear fecha con guiones (formato CER)
+// Usa la función compartida de dateUtils.js
+function formatearFechaMostrarCER(fechaString) {
+    return formatearFechaMostrar(fechaString, '-');
 }
 
-// Formatear número para mostrar (específico para CER con 4 decimales)
-function formatearNumero(numero) {
-    if (numero === null || numero === undefined) return '-';
-    return parseFloat(numero).toLocaleString('es-AR', {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4
-    });
+// Wrapper para formatear número con 4 decimales (formato CER)
+// Usa la función compartida de formUtils.js
+function formatearNumeroCER(numero) {
+    return formatearNumero(numero, 4);
 }
 
 // Calcular rangos de fechas faltantes (CORREGIDO - verificación precisa)
@@ -134,19 +115,7 @@ function calcularRangosFaltantes(fechaDesde, fechaHasta, fechasExistentes) {
     return rangos;
 }
 
-// Formatear fecha para input (YYYY-MM-DD) sin problemas de zona horaria
-function formatearFechaInput(fecha) {
-    if (!fecha) return '';
-    if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-        return fecha;
-    }
-    const d = crearFechaDesdeString(fecha);
-    if (!d || isNaN(d.getTime())) return '';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
+// formatearFechaInput está disponible en dateUtils.js
 
 // Cargar datos de CER desde la API
 async function cargarCER() {
@@ -292,8 +261,8 @@ function agregarFilaCER(item, tbody) {
     }
     
     row.innerHTML = `
-        <td>${formatearFechaMostrar(fecha)}</td>
-        <td style="text-align: right;">${formatearNumero(valor)}</td>
+        <td>${formatearFechaMostrarCER(fecha)}</td>
+        <td style="text-align: right;">${formatearNumeroCER(valor)}</td>
     `;
     
     // Insertar en orden descendente (más reciente primero)
@@ -362,8 +331,8 @@ function generarTablaCER(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatearFechaMostrar(fecha)}</td>
-                <td style="text-align: right;">${formatearNumero(valor)}</td>
+                <td>${formatearFechaMostrarCER(fecha)}</td>
+                <td style="text-align: right;">${formatearNumeroCER(valor)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -387,83 +356,16 @@ function generarTablaCER(datos, soloNuevos = false) {
     }
 }
 
-// Convertir DD-MM-AAAA o DD/MM/AAAA a YYYY-MM-DD
-function convertirFechaDDMMAAAAaYYYYMMDD(fechaDDMMAAAA) {
-    if (!fechaDDMMAAAA) return '';
-    // Aceptar tanto DD-MM-AAAA como DD/MM/AAAA
-    const partes = fechaDDMMAAAA.split(/[-\/]/);
-    if (partes.length !== 3) return '';
-    const dia = partes[0].padStart(2, '0');
-    const mes = partes[1].padStart(2, '0');
-    const año = partes[2];
-    return `${año}-${mes}-${dia}`;
-}
+// convertirFechaDDMMAAAAaYYYYMMDD está disponible en dateUtils.js
+// validarFechaDDMMAAAA está disponible en dateUtils.js
+// crearFechaDesdeString está disponible en dateUtils.js
 
 // Wrapper para usar función compartida con guiones (formato CER)
-// Nota: La función compartida convertirFechaYYYYMMDDaDDMMAAAA acepta separador como segundo parámetro
-// Para mantener compatibilidad, mantenemos esta función local que usa guiones
 function convertirFechaYYYYMMDDaDDMMAAAA_CER(fechaYYYYMMDD) {
-    if (!fechaYYYYMMDD) return '';
-    if (typeof fechaYYYYMMDD === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaYYYYMMDD)) {
-        const partes = fechaYYYYMMDD.split('T')[0].split('-');
-        return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    }
-    return fechaYYYYMMDD;
+    return convertirFechaYYYYMMDDaDDMMAAAA(fechaYYYYMMDD, '-');
 }
 
-// Validar formato DD-MM-AAAA o DD/MM/AAAA (acepta ambos)
-function validarFechaDDMMAAAA(fecha) {
-    if (!fecha) return false;
-    // Aceptar tanto DD-MM-AAAA como DD/MM/AAAA
-    const regex = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
-    const match = fecha.match(regex);
-    if (!match) return false;
-    
-    const dia = parseInt(match[1], 10);
-    const mes = parseInt(match[2], 10);
-    const año = parseInt(match[3], 10);
-    
-    // Validar rangos
-    if (mes < 1 || mes > 12) return false;
-    if (dia < 1 || dia > 31) return false;
-    if (año < 1900 || año > 2100) return false;
-    
-    // Validar día según mes
-    const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    // Año bisiesto
-    if (mes === 2 && ((año % 4 === 0 && año % 100 !== 0) || año % 400 === 0)) {
-        if (dia > 29) return false;
-    } else {
-        if (dia > diasPorMes[mes - 1]) return false;
-    }
-    
-    return true;
-}
-
-// Aplicar máscara DD-MM-AAAA mientras se escribe
-function aplicarMascaraFecha(input) {
-    input.addEventListener('input', function(e) {
-        let valor = e.target.value.replace(/\D/g, ''); // Solo números
-        
-        if (valor.length >= 2) {
-            valor = valor.substring(0, 2) + '-' + valor.substring(2);
-        }
-        if (valor.length >= 5) {
-            valor = valor.substring(0, 5) + '-' + valor.substring(5, 9);
-        }
-        
-        e.target.value = valor;
-    });
-    
-    input.addEventListener('blur', function(e) {
-        if (e.target.value && !validarFechaDDMMAAAA(e.target.value)) {
-            e.target.style.borderColor = '#d93025';
-            showError('Formato de fecha inválido. Use DD-MM-AAAA');
-        } else {
-            e.target.style.borderColor = '';
-        }
-    });
-}
+// aplicarMascaraFecha está disponible en formUtils.js con soporte para separador
 
 // Abrir modal de intervalos
 function abrirModalIntervalosCER() {
@@ -673,18 +575,16 @@ function cerrarModalExportarCSV() {
     }
 }
 
-// Función para formatear fecha a DD/MM/AAAA
+// Función para formatear fecha a DD/MM/AAAA (para exportación CSV)
+// Usa la función compartida de dateUtils.js
 function formatearFechaExportar(fecha) {
     if (!fecha) return '';
     let fechaStr = fecha;
     if (typeof fecha === 'string' && fecha.includes('T')) {
         fechaStr = fecha.split('T')[0];
     }
-    if (typeof fechaStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaStr)) {
-        const partes = fechaStr.split('-');
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    }
-    return fechaStr;
+    // Usar función compartida con separador '/' para exportación
+    return convertirFechaYYYYMMDDaDDMMAAAA(fechaStr, '/');
 }
 
 // Función para formatear valor con coma como separador decimal
@@ -766,13 +666,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const fechaDesdeInput = document.getElementById('fechaDesdeCER');
     const fechaHastaInput = document.getElementById('fechaHastaCER');
     
-    // Aplicar máscara a los inputs
+    // Aplicar máscara a los inputs (usando separador '-' para CER)
     if (fechaDesdeInput) {
-        aplicarMascaraFecha(fechaDesdeInput);
+        aplicarMascaraFecha(fechaDesdeInput, '-');
     }
     
     if (fechaHastaInput) {
-        aplicarMascaraFecha(fechaHastaInput);
+        aplicarMascaraFecha(fechaHastaInput, '-');
     }
     
     // Cerrar modal al hacer clic fuera
@@ -790,11 +690,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const buscarHastaInput = document.getElementById('buscarHastaCER');
     
     if (buscarDesdeInput) {
-        aplicarMascaraFecha(buscarDesdeInput);
+        aplicarMascaraFecha(buscarDesdeInput, '-');
     }
     
     if (buscarHastaInput) {
-        aplicarMascaraFecha(buscarHastaInput);
+        aplicarMascaraFecha(buscarHastaInput, '-');
     }
 });
 

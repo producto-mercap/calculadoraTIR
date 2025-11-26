@@ -205,12 +205,17 @@ function aplicarMascaraFechaDDMM(input) {
 
 /**
  * Formatear número para mostrar
+ * @param {number|string} numero - Número a formatear
+ * @param {number} decimales - Cantidad de decimales (2 por defecto, 4 para CER/TAMAR/BADLAR)
+ * @returns {string} Número formateado
  */
-function formatearNumero(numero) {
-    if (numero === null || numero === undefined || isNaN(numero)) return '';
-    return new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(numero);
+function formatearNumero(numero, decimales = 2) {
+    if (numero === null || numero === undefined || isNaN(numero)) return '-';
+    return parseFloat(numero).toLocaleString('es-AR', {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales
+    });
 }
+
+
 

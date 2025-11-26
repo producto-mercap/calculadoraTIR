@@ -1,7 +1,7 @@
 <header class="top-header">
-    <div style="display: flex; align-items: center; justify-content: center; padding: 0 24px; height: 56px; width: 100%;">
-        <!-- Tabs de navegación centradas -->
-        <nav class="header-tabs" style="display: flex; align-items: center; justify-content: center; width: 100%;">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; width: 100%;">
+        <!-- Tabs de navegación a la izquierda -->
+        <nav class="header-tabs" style="display: flex; align-items: center; justify-content: flex-start;">
             <a href="/calculadora" class="header-tab <%= activeMenu === 'calculadora' ? 'active' : '' %>">
                 <span>Calculadora</span>
             </a>
@@ -18,6 +18,24 @@
                 <span>Feriados</span>
             </a>
         </nav>
+        
+        <!-- Botones Guardar/Cargar (solo en página de calculadora) -->
+        <% if (activeMenu === 'calculadora') { %>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-primary" onclick="guardarCalculadora()" id="btnGuardarCalculadora">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                </svg>
+                <span>Guardar</span>
+            </button>
+            <button class="btn" onclick="cargarCalculadora()" id="btnCargarCalculadora">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                <span>Cargar</span>
+            </button>
+        </div>
+        <% } %>
     </div>
 </header>
 
