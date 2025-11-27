@@ -52,7 +52,7 @@ async function cargarFeriadosDesdeBD(fechaDesde, fechaHasta) {
         
         if (result.success && result.datos) {
             // Extraer solo las fechas en formato YYYY-MM-DD
-            const fechas = result.datos.map(feriado => {
+            const fechasNuevas = result.datos.map(feriado => {
                 let fecha = feriado.fecha;
                 if (typeof fecha === 'string' && fecha.includes('T')) {
                     fecha = fecha.split('T')[0];
@@ -60,11 +60,36 @@ async function cargarFeriadosDesdeBD(fechaDesde, fechaHasta) {
                 return fecha;
             });
             
-            // Actualizar cache
-            feriadosCache = fechas;
-            feriadosCacheFecha = { desde: fechaDesde, hasta: fechaHasta };
+            // Combinar con cache existente si hay
+            if (feriadosCache && feriadosCache.length > 0) {
+                // Combinar arrays y eliminar duplicados
+                const todasLasFechas = [...new Set([...feriadosCache, ...fechasNuevas])].sort();
+                
+                // Determinar el rango combinado
+                const cacheDesde = crearFechaDesdeString(feriadosCacheFecha.desde);
+                const cacheHasta = crearFechaDesdeString(feriadosCacheFecha.hasta);
+                const nuevoDesde = crearFechaDesdeString(fechaDesde);
+                const nuevoHasta = crearFechaDesdeString(fechaHasta);
+                
+                const desdeCombinado = nuevoDesde < cacheDesde ? fechaDesde : feriadosCacheFecha.desde;
+                const hastaCombinado = nuevoHasta > cacheHasta ? fechaHasta : feriadosCacheFecha.hasta;
+                
+                // Actualizar cache con datos combinados
+                feriadosCache = todasLasFechas;
+                feriadosCacheFecha = { desde: desdeCombinado, hasta: hastaCombinado };
+                
+                console.log('[cargarFeriadosDesdeBD] Cache expandido:', {
+                    desde: desdeCombinado,
+                    hasta: hastaCombinado,
+                    totalFechas: todasLasFechas.length
+                });
+            } else {
+                // Si no hay cache, crear uno nuevo
+                feriadosCache = fechasNuevas;
+                feriadosCacheFecha = { desde: fechaDesde, hasta: fechaHasta };
+            }
             
-            return fechas;
+            return feriadosCache;
         }
         
         return [];

@@ -76,6 +76,16 @@ function agregarFilaCupon() {
 function eliminarFilaCupon(cuponId) {
     cuponesData = cuponesData.filter(c => c.id !== cuponId);
     renderizarCupones();
+    
+    // Actualizar visibilidad de coeficientes CER
+    if (typeof window.actualizarVisibilidadCoeficientesCER === 'function') {
+        window.actualizarVisibilidadCoeficientesCER();
+    }
+    
+    // Actualizar visibilidad de coeficientes CER
+    if (typeof window.actualizarVisibilidadCoeficientesCER === 'function') {
+        window.actualizarVisibilidadCoeficientesCER();
+    }
 }
 
 /**
@@ -130,7 +140,7 @@ function renderizarCupones() {
         row.innerHTML = `
             <td>
                 <input type="text" class="input-table" value="${cupon.cupon || ''}" 
-                       onchange="actualizarCupon(${cupon.id}, 'cupon', this.value)" 
+                       onchange="actualizarCupon('${cupon.id}', 'cupon', this.value)" 
                        style="width: 50px; text-align: center;" />
             </td>
             <td>
@@ -140,7 +150,7 @@ function renderizarCupones() {
                            value="${cupon.fechaInicio || ''}" 
                            placeholder="DD/MM/AAAA" 
                            maxlength="10"
-                           onchange="actualizarCupon(${cupon.id}, 'fechaInicio', this.value)"
+                           onchange="actualizarCupon('${cupon.id}', 'fechaInicio', this.value)"
                            onclick="event.stopPropagation(); abrirDatePicker('fechaInicio_${cupon.id}');" />
                 </div>
             </td>
@@ -151,7 +161,7 @@ function renderizarCupones() {
                            value="${cupon.fechaFinDev || ''}" 
                            placeholder="DD/MM/AAAA" 
                            maxlength="10"
-                           onchange="actualizarCupon(${cupon.id}, 'fechaFinDev', this.value)"
+                           onchange="actualizarCupon('${cupon.id}', 'fechaFinDev', this.value)"
                            onclick="event.stopPropagation(); abrirDatePicker('fechaFinDev_${cupon.id}');" />
                 </div>
             </td>
@@ -162,7 +172,7 @@ function renderizarCupones() {
                            value="${cupon.fechaLiquid || ''}" 
                            placeholder="DD/MM/AAAA" 
                            maxlength="10"
-                           onchange="actualizarCupon(${cupon.id}, 'fechaLiquid', this.value)"
+                           onchange="actualizarCupon('${cupon.id}', 'fechaLiquid', this.value)"
                            onclick="event.stopPropagation(); abrirDatePicker('fechaLiquid_${cupon.id}');" />
                 </div>
             </td>
@@ -173,7 +183,7 @@ function renderizarCupones() {
                            value="${cupon.inicioIntervalo || ''}" 
                            placeholder="DD/MM/AAAA" 
                            maxlength="10"
-                           onchange="actualizarCupon(${cupon.id}, 'inicioIntervalo', this.value)"
+                           onchange="actualizarCupon('${cupon.id}', 'inicioIntervalo', this.value)"
                            onclick="event.stopPropagation(); abrirDatePicker('inicioIntervalo_${cupon.id}');" />
                 </div>
             </td>
@@ -184,90 +194,93 @@ function renderizarCupones() {
                            value="${cupon.finalIntervalo || ''}" 
                            placeholder="DD/MM/AAAA" 
                            maxlength="10"
-                           onchange="actualizarCupon(${cupon.id}, 'finalIntervalo', this.value)"
+                           onchange="actualizarCupon('${cupon.id}', 'finalIntervalo', this.value)"
                            onclick="event.stopPropagation(); abrirDatePicker('finalIntervalo_${cupon.id}');" />
                 </div>
             </td>
             <td>
                 <input type="number" class="input-table" 
+                       id="valorCERInicio_${cupon.id}"
                        value="${cupon.valorCERInicio || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'valorCERInicio', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'valorCERInicio', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
+                       id="valorCERFinal_${cupon.id}"
                        value="${cupon.valorCERFinal || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'valorCERFinal', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'valorCERFinal', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
+                       id="dayCountFactor_${cupon.id}"
                        value="${cupon.dayCountFactor || ''}" 
                        step="0.00000001"
-                       onchange="actualizarCupon(${cupon.id}, 'dayCountFactor', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'dayCountFactor', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.amortiz || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'amortiz', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'amortiz', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.valorResidual || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'valorResidual', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'valorResidual', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.amortizAjustada || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'amortizAjustada', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'amortizAjustada', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.rentaNominal || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'rentaNominal', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'rentaNominal', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.rentaTNA || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'rentaTNA', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'rentaTNA', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.rentaAjustada || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'rentaAjustada', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'rentaAjustada', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.factorActualiz || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'factorActualiz', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'factorActualiz', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.pagosActualiz || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'pagosActualiz', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'pagosActualiz', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.flujos || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'flujos', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'flujos', this.value)" />
             </td>
             <td>
                 <input type="number" class="input-table" 
                        value="${cupon.flujosDesc || ''}" 
                        step="0.0001"
-                       onchange="actualizarCupon(${cupon.id}, 'flujosDesc', this.value)" />
+                       onchange="actualizarCupon('${cupon.id}', 'flujosDesc', this.value)" />
             </td>
             <td>
-                <button class="btn-icon" onclick="eliminarFilaCupon(${cupon.id})" title="Eliminar cupón">
+                <button class="btn-icon" onclick="eliminarFilaCupon('${cupon.id}')" title="Eliminar cupón">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                     </svg>
@@ -280,16 +293,28 @@ function renderizarCupones() {
 }
 
 /**
- * Actualiza un valor de un cupón específico
+ * Actualiza un valor de un cupón específico y recalcula dependencias
  */
-function actualizarCupon(cuponId, campo, valor) {
+async function actualizarCupon(cuponId, campo, valor) {
     const cupon = cuponesData.find(c => c.id === cuponId);
     if (cupon) {
         cupon[campo] = valor;
-        // Aquí se llamará a la lógica de autocompletado cuando esté implementada
-        // autocompletarCupon(cupon);
+        
+        // Recalcular dependencias según el campo modificado
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularDependencias) {
+            await window.cuponesRecalculos.recalcularDependencias(cupon, campo);
+        }
     }
 }
+
+/**
+ * Recalcula los campos dependientes cuando se modifica un campo
+ * Cadena de dependencias:
+ * - fechaInicio → inicioIntervalo → valorCERInicio
+ * - fechaLiquid → finalIntervalo → valorCERFinal
+ */
+// Funciones de recálculo movidas a cupones/recalculos.js
+// Se mantienen referencias para compatibilidad
 
 /**
  * Obtiene todos los cupones
@@ -319,6 +344,11 @@ function setCuponesData(nuevosDatos) {
         }
     });
     renderizarCupones();
+    
+    // Actualizar visibilidad de coeficientes CER
+    if (typeof window.actualizarVisibilidadCoeficientesCER === 'function') {
+        window.actualizarVisibilidadCoeficientesCER();
+    }
 }
 
 /**
@@ -391,6 +421,41 @@ window.cuponesModule = {
     obtenerCupones,
     limpiarCupones,
     setCuponesData,
-    getCuponesData
+    getCuponesData,
+    // Funciones de recálculo movidas a cupones/recalculos.js
+    // Se mantienen referencias para compatibilidad
+    recalcularDependencias: (cupon, campo) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularDependencias) {
+            return window.cuponesRecalculos.recalcularDependencias(cupon, campo);
+        }
+    },
+    recalcularInicioIntervalo: (cupon) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularInicioIntervalo) {
+            return window.cuponesRecalculos.recalcularInicioIntervalo(cupon);
+        }
+    },
+    recalcularFinalIntervalo: (cupon) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularFinalIntervalo) {
+            return window.cuponesRecalculos.recalcularFinalIntervalo(cupon);
+        }
+    },
+    recalcularValorCERInicio: (cupon) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularValorCERInicio) {
+            return window.cuponesRecalculos.recalcularValorCERInicio(cupon);
+        }
+    },
+    recalcularValorCERFinal: (cupon) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularValorCERFinal) {
+            return window.cuponesRecalculos.recalcularValorCERFinal(cupon);
+        }
+    },
+    recalcularDayCountFactor: (cupon) => {
+        if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularDayCountFactor) {
+            return window.cuponesRecalculos.recalcularDayCountFactor(cupon);
+        }
+    }
 };
+
+// También exportar actualizarCupon globalmente para el onclick en el HTML
+window.actualizarCupon = actualizarCupon;
 

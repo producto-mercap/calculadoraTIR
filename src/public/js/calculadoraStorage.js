@@ -363,189 +363,8 @@ async function seleccionarCalculadora(id) {
     }
 }
 
-// Función para actualizar el valor CER de valuación
-async function actualizarCERValuacion() {
-    const fechaValuacionInput = document.getElementById('fechaValuacion');
-    const intervaloFinInput = document.getElementById('intervaloFin');
-    const cerValuacionInput = document.getElementById('cerValuacion');
-    
-    if (!fechaValuacionInput || !intervaloFinInput || !cerValuacionInput) {
-        return;
-    }
-    
-    const fechaValuacionStr = fechaValuacionInput.value;
-    const intervaloFin = parseInt(intervaloFinInput.value || '0', 10);
-    
-    if (!fechaValuacionStr) {
-        cerValuacionInput.value = '';
-        return;
-    }
-    
-    try {
-        // Convertir fecha valuación a Date
-        const fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
-        if (!fechaValuacionDate) {
-            cerValuacionInput.value = '';
-            return;
-        }
-        
-        // Calcular fecha final (fechaValuacion + intervaloFin en días hábiles)
-        // Obtener feriados desde cache (ya deben estar cargados manualmente)
-        const fechaDesde = formatearFechaInput(fechaValuacionDate);
-        const fechaHastaDate = new Date(fechaValuacionDate);
-        fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.abs(intervaloFin) + 30);
-        const fechaHasta = formatearFechaInput(fechaHastaDate);
-        
-        // Solo usar cache, NO cargar desde BD automáticamente
-        const feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
-        if (!feriados || feriados.length === 0) {
-            // Si no hay cache, no calcular (el usuario debe cargar feriados primero)
-            cerValuacionInput.value = 'N/A (cargar feriados)';
-            return;
-        }
-        
-        const fechaFinal = window.cuponesDiasHabiles.sumarDiasHabiles(fechaValuacionDate, intervaloFin, feriados);
-        
-        // Obtener valor CER para la fecha final desde cache
-        const fechaFinalStr = formatearFechaInput(fechaFinal);
-        const valoresCER = window.cuponesCER.obtenerValoresCER(fechaFinalStr, fechaFinalStr);
-        if (!valoresCER || valoresCER.length === 0) {
-            // Si no hay cache, no calcular (el usuario debe cargar CER primero)
-            cerValuacionInput.value = 'N/A (cargar CER)';
-            return;
-        }
-        
-        const valorCER = window.cuponesCER.buscarValorCERPorFecha(fechaFinal, valoresCER);
-        
-        // Mostrar valor CER
-        if (valorCER !== null) {
-            cerValuacionInput.value = valorCER.toFixed(4);
-        } else {
-            cerValuacionInput.value = 'N/A';
-        }
-    } catch (error) {
-        console.error('Error al calcular CER de valuación:', error);
-        cerValuacionInput.value = 'Error';
-    }
-}
-
-// Función para refrescar la tabla cuando cambia la fecha valuación
-// Actualiza estilos Y recalcula intervalos/valores CER para cupones futuros
-async function refrescarTablaCupones() {
-    // Verificar si hay cupones cargados
-    const tablaContainer = document.getElementById('tablaCuponesContainer');
-    const tieneCupones = tablaContainer && tablaContainer.style.display !== 'none' && 
-                        window.cuponesModule && window.cuponesModule.getCuponesData().length > 0;
-    
-    if (!tieneCupones) {
-        return;
-    }
-    
-    // Obtener fecha valuación e intervaloFin
-    const fechaValuacionInput = document.getElementById('fechaValuacion');
-    const intervaloFinInput = document.getElementById('intervaloFin');
-    const intervaloInicioInput = document.getElementById('intervaloInicio');
-    
-    const fechaValuacionStr = fechaValuacionInput?.value || '';
-    const intervaloFin = parseInt(intervaloFinInput?.value || '0', 10);
-    const intervaloInicio = parseInt(intervaloInicioInput?.value || '0', 10);
-    
-    if (!fechaValuacionStr) {
-        return;
-    }
-    
-    const fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
-    if (!fechaValuacionDate) {
-        return;
-    }
-    
-    // Obtener feriados y valores CER desde cache
-    const fechaDesde = formatearFechaInput(fechaValuacionDate);
-    const fechaHastaDate = new Date(fechaValuacionDate);
-    fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.abs(intervaloFin) + 30);
-    const fechaHasta = formatearFechaInput(fechaHastaDate);
-    
-    const feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
-    const valoresCER = window.cuponesCER.obtenerValoresCER(fechaDesde, fechaHasta);
-    
-    // Si no hay datos en cache, no podemos recalcular (el usuario debe cargar datos primero)
-    if ((!feriados || feriados.length === 0) && (!valoresCER || valoresCER.length === 0)) {
-        // Solo actualizar estilos
-        if (window.cuponesModule && typeof window.cuponesModule.actualizarEstilosCupones === 'function') {
-            window.cuponesModule.actualizarEstilosCupones();
-        }
-        return;
-    }
-    
-    // Obtener cupones y actualizar los que tienen fechas mayores a fecha valuación
-    const cuponesData = window.cuponesModule.getCuponesData();
-    let huboCambios = false;
-    
-    cuponesData.forEach(cupon => {
-        // No modificar la fila de inversión
-        if (cupon.id === 'inversion') {
-            // Solo actualizar finalIntervalo de inversión si es necesario
-            return;
-        }
-        
-        // Verificar si fechaLiquid es mayor a fechaValuacion
-        if (cupon.fechaLiquid) {
-            try {
-                const fechaLiquidDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaLiquid));
-                
-                if (fechaLiquidDate && fechaLiquidDate > fechaValuacionDate) {
-                    // Es un cupón futuro - recalcular intervalos usando fecha valuación
-                    
-                    // Recalcular inicioIntervalo = fechaValuacion + intervaloInicio
-                    if (feriados && feriados.length > 0) {
-                        const nuevoInicioIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
-                            fechaValuacionDate,
-                            intervaloInicio,
-                            feriados
-                        );
-                        cupon.inicioIntervalo = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(nuevoInicioIntervalo), '/');
-                        
-                        // Buscar valor CER para nuevo inicio intervalo
-                        if (valoresCER && valoresCER.length > 0) {
-                            const valorCERInicio = window.cuponesCER.buscarValorCERPorFecha(nuevoInicioIntervalo, valoresCER);
-                            cupon.valorCERInicio = valorCERInicio !== null ? valorCERInicio.toFixed(4) : '';
-                        }
-                    }
-                    
-                    // Recalcular finalIntervalo = fechaValuacion + intervaloFin
-                    if (feriados && feriados.length > 0) {
-                        const nuevoFinalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
-                            fechaValuacionDate,
-                            intervaloFin,
-                            feriados
-                        );
-                        cupon.finalIntervalo = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(nuevoFinalIntervalo), '/');
-                        
-                        // Buscar valor CER para nuevo final intervalo
-                        if (valoresCER && valoresCER.length > 0) {
-                            const valorCERFinal = window.cuponesCER.buscarValorCERPorFecha(nuevoFinalIntervalo, valoresCER);
-                            cupon.valorCERFinal = valorCERFinal !== null ? valorCERFinal.toFixed(4) : '';
-                        }
-                    }
-                    
-                    huboCambios = true;
-                }
-            } catch (e) {
-                console.warn('Error al procesar cupón:', e);
-            }
-        }
-    });
-    
-    // Si hubo cambios, actualizar los datos y re-renderizar
-    if (huboCambios) {
-        window.cuponesModule.setCuponesData(cuponesData);
-    } else {
-        // Solo actualizar estilos sin re-renderizar
-        if (window.cuponesModule && typeof window.cuponesModule.actualizarEstilosCupones === 'function') {
-            window.cuponesModule.actualizarEstilosCupones();
-        }
-    }
-}
+// Funciones relacionadas con CER movidas a calculadora/calculadoraCER.js
+// Se mantienen referencias globales para compatibilidad
 
 // Inicializar máscaras de fecha para la página de calculadora
 document.addEventListener('DOMContentLoaded', () => {
@@ -581,10 +400,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const año = hoy.getFullYear();
         fechaValuacionInput.value = `${dia}/${mes}/${año}`;
         
-        // Actualizar CER de valuación
-        setTimeout(() => {
-            actualizarCERValuacion();
-        }, 100);
+        // Actualizar CER de valuación y coeficientes
+        setTimeout(async () => {
+            if (window.actualizarCERValuacion) {
+                await window.actualizarCERValuacion();
+            } else {
+                console.warn('[calculadoraStorage] actualizarCERValuacion no está disponible');
+            }
+            if (window.actualizarCoeficientesCER) {
+                await window.actualizarCoeficientesCER();
+            } else {
+                console.warn('[calculadoraStorage] actualizarCoeficientesCER no está disponible');
+            }
+            if (window.actualizarVisibilidadCoeficientesCER) {
+                window.actualizarVisibilidadCoeficientesCER();
+            }
+        }, 200);
+    } else if (fechaValuacionInput && fechaValuacionInput.value) {
+        // Si ya hay una fecha valuación, actualizar coeficientes
+        setTimeout(async () => {
+            if (window.actualizarCoeficientesCER) {
+                await window.actualizarCoeficientesCER();
+            }
+            if (window.actualizarVisibilidadCoeficientesCER) {
+                window.actualizarVisibilidadCoeficientesCER();
+            }
+        }, 200);
     }
     
     // Listener para fecha valuación: actualizar CER y refrescar estilo de tabla
@@ -595,8 +436,25 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Función para actualizar CER y refrescar tabla con los nuevos valores
         const actualizarYRefrescar = async () => {
-            await actualizarCERValuacion();
-            await refrescarTablaCupones(); // Actualiza intervalos y valores CER para cupones futuros
+            console.log('[calculadoraStorage] actualizarYRefrescar - Iniciando actualización');
+            if (window.actualizarCERValuacion) {
+                await window.actualizarCERValuacion();
+            } else {
+                console.warn('[calculadoraStorage] actualizarCERValuacion no está disponible');
+            }
+            if (window.actualizarCoeficientesCER) {
+                await window.actualizarCoeficientesCER();
+            } else {
+                console.warn('[calculadoraStorage] actualizarCoeficientesCER no está disponible');
+            }
+            if (window.refrescarTablaCupones) {
+                await window.refrescarTablaCupones();
+            } else {
+                console.warn('[calculadoraStorage] refrescarTablaCupones no está disponible');
+            }
+            if (window.actualizarVisibilidadCoeficientesCER) {
+                window.actualizarVisibilidadCoeficientesCER();
+            }
         };
         
         // Listener para eventos de cambio (solo cuando el valor realmente cambia)
@@ -623,15 +481,86 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Listener para intervaloFin: actualizar CER de valuación
+    // Listener para intervaloFin: actualizar CER de valuación y coeficientes
     const intervaloFinInput = document.getElementById('intervaloFin');
     if (intervaloFinInput) {
-        intervaloFinInput.addEventListener('change', () => {
-            actualizarCERValuacion();
-        });
-        intervaloFinInput.addEventListener('input', () => {
-            actualizarCERValuacion();
+        const actualizarIntervaloFin = async () => {
+            if (window.actualizarCERValuacion) {
+                await window.actualizarCERValuacion();
+            }
+            if (window.actualizarCoeficientesCER) {
+                await window.actualizarCoeficientesCER();
+            }
+        };
+        intervaloFinInput.addEventListener('change', actualizarIntervaloFin);
+        intervaloFinInput.addEventListener('input', actualizarIntervaloFin);
+    }
+    
+    // Listener para fechaEmision: actualizar coeficiente CER Emisión
+    const fechaEmisionInput = document.getElementById('fechaEmision');
+    if (fechaEmisionInput) {
+        let valorAnteriorEmision = fechaEmisionInput.value;
+        const manejarCambioEmision = async () => {
+            const valorActual = fechaEmisionInput.value;
+            if (valorActual !== valorAnteriorEmision && valorActual.length === 10) {
+                valorAnteriorEmision = valorActual;
+                await window.actualizarCoeficientesCER();
+            }
+        };
+        fechaEmisionInput.addEventListener('change', manejarCambioEmision);
+        fechaEmisionInput.addEventListener('blur', manejarCambioEmision);
+    }
+    
+    // Listener para fechaCompra: actualizar coeficiente CER Compra
+    const fechaCompraInput = document.getElementById('fechaCompra');
+    if (fechaCompraInput) {
+        let valorAnteriorCompra = fechaCompraInput.value;
+        const manejarCambioCompra = async () => {
+            const valorActual = fechaCompraInput.value;
+            if (valorActual !== valorAnteriorCompra && valorActual.length === 10) {
+                valorAnteriorCompra = valorActual;
+                await window.actualizarCoeficientesCER();
+            }
+        };
+        fechaCompraInput.addEventListener('change', manejarCambioCompra);
+        fechaCompraInput.addEventListener('blur', manejarCambioCompra);
+    }
+    
+    // Listener para tipoInteresDias: recalcular todos los dayCountFactor
+    const tipoInteresDiasSelect = document.getElementById('tipoInteresDias');
+    if (tipoInteresDiasSelect) {
+        tipoInteresDiasSelect.addEventListener('change', () => {
+            // Recalcular dayCountFactor para todos los cupones
+            const cuponesData = window.cuponesModule?.getCuponesData() || [];
+            cuponesData.forEach(cupon => {
+                if (cupon.id !== 'inversion') { // Solo cupones normales, no la fila de inversión
+                    if (window.cuponesRecalculos && window.cuponesRecalculos.recalcularDayCountFactor) {
+                        window.cuponesRecalculos.recalcularDayCountFactor(cupon);
+                    }
+                }
+            });
         });
     }
+    
+    // Listener para ajusteCER: actualizar visibilidad de coeficientes
+    const ajusteCERCheckbox = document.getElementById('ajusteCER');
+    if (ajusteCERCheckbox) {
+        ajusteCERCheckbox.addEventListener('change', async () => {
+            if (window.actualizarVisibilidadCoeficientesCER) {
+                window.actualizarVisibilidadCoeficientesCER();
+            }
+            // Si se activa y hay cupones, actualizar los coeficientes
+            if (ajusteCERCheckbox.checked && window.actualizarCoeficientesCER) {
+                await window.actualizarCoeficientesCER();
+            }
+        });
+    }
+    
+    // Inicializar visibilidad de coeficientes
+    setTimeout(() => {
+        if (window.actualizarVisibilidadCoeficientesCER) {
+            window.actualizarVisibilidadCoeficientesCER();
+        }
+    }, 300);
 });
 

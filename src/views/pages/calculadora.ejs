@@ -12,25 +12,37 @@
     <div class="app-container">
         <main class="main-content">
             <div class="content-area">
-                <div style="margin-bottom: 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
-                    <h1 class="page-title" style="margin: 0;">Calculadora</h1>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <label class="form-label" style="font-size: 14px; margin: 0; white-space: nowrap;">Fecha Valuación:</label>
-                        <div class="date-input-wrapper" style="position: relative;">
-                            <input type="text" class="input input-sm date-input" id="fechaValuacion" placeholder="DD/MM/AAAA" maxlength="10" style="width: 140px;" />
-                            <button type="button" class="date-picker-icon-btn" onclick="abrirDatePicker('fechaValuacion')" title="Seleccionar fecha">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                            </button>
-                            <div id="datePickerFechaValuacion" class="date-picker-popup" style="display: none;"></div>
-                        </div>
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 16px;">
+                        <h1 class="page-title" style="margin: 0;">Calculadora</h1>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="form-label" style="font-size: 14px; margin: 0; white-space: nowrap;">CER Valuación:</label>
-                            <input type="text" class="input input-sm" id="cerValuacion" readonly style="width: 120px; background-color: #f1f3f4; cursor: not-allowed;" />
+                            <label class="form-label" style="font-size: 14px; margin: 0; white-space: nowrap;">Fecha Valuación:</label>
+                            <div class="date-input-wrapper" style="position: relative;">
+                                <input type="text" class="input input-sm date-input" id="fechaValuacion" placeholder="DD/MM/AAAA" maxlength="10" style="width: 140px;" />
+                                <button type="button" class="date-picker-icon-btn" onclick="abrirDatePicker('fechaValuacion')" title="Seleccionar fecha">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </button>
+                                <div id="datePickerFechaValuacion" class="date-picker-popup" style="display: none;"></div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label class="form-label" style="font-size: 14px; margin: 0; white-space: nowrap;">CER Valuación:</label>
+                                <input type="text" class="input input-sm" id="cerValuacion" readonly style="width: 120px; background-color: #f1f3f4; cursor: not-allowed;" />
+                            </div>
+                        </div>
+                    </div>
+                    <div id="coeficientesCERContainer" style="display: none; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div class="resultado-item-horizontal" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f1f3f4; border-radius: 4px;">
+                            <span style="font-size: 14px; font-weight: 500; white-space: nowrap;">Coef. CER Emisión:</span>
+                            <span id="coefCEREmision" style="font-size: 14px; color: #202124;">-</span>
+                        </div>
+                        <div class="resultado-item-horizontal" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f1f3f4; border-radius: 4px;">
+                            <span style="font-size: 14px; font-weight: 500; white-space: nowrap;">Coef. CER Compra:</span>
+                            <span id="coefCERCompra" style="font-size: 14px; color: #202124;">-</span>
                         </div>
                     </div>
                 </div>
@@ -290,14 +302,18 @@
     <script src="/js/utils/dateUtils.js"></script>
     <script src="/js/utils/formUtils.js"></script>
     <!-- Módulos de cupones (estructura preparada para lógica compleja) -->
-    <script src="/js/calculadora/cupones/core.js"></script>
+    <script src="/js/calculadora/cupones/dayCountFactor.js"></script>
     <script src="/js/calculadora/cupones/diasHabiles.js"></script>
     <script src="/js/calculadora/cupones/cer.js"></script>
+    <script src="/js/calculadora/cupones/recalculos.js"></script>
+    <script src="/js/calculadora/cupones/core.js"></script>
     <script src="/js/calculadora/cupones/calculoCupones.js"></script>
     <script src="/js/calculadora/cupones/autocompletado.js"></script>
     <script src="/js/calculadora/cupones/calculos.js"></script>
     <script src="/js/calculadora/cupones/fechas.js"></script>
     <script src="/js/calculadora/cupones/validaciones.js"></script>
+    <!-- Módulo de cálculos CER -->
+    <script src="/js/calculadora/calculadoraCER.js"></script>
     <!-- Compatibilidad: mantener cupones.js por ahora -->
     <script src="/js/cupones.js"></script>
     <script src="/js/calculadoraStorage.js"></script>
