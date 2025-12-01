@@ -679,13 +679,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(async () => {
             if (window.actualizarCERValuacion) {
                 await window.actualizarCERValuacion();
-            } else {
-                console.warn('[calculadoraStorage] actualizarCERValuacion no está disponible');
             }
             if (window.actualizarCoeficientesCER) {
                 await window.actualizarCoeficientesCER();
-            } else {
-                console.warn('[calculadoraStorage] actualizarCoeficientesCER no está disponible');
             }
             if (window.actualizarVisibilidadCoeficientesCER) {
                 window.actualizarVisibilidadCoeficientesCER();
@@ -711,21 +707,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Función para actualizar CER y refrescar tabla con los nuevos valores
         const actualizarYRefrescar = async () => {
-            console.log('[calculadoraStorage] actualizarYRefrescar - Iniciando actualización');
             if (window.actualizarCERValuacion) {
                 await window.actualizarCERValuacion();
-            } else {
-                console.warn('[calculadoraStorage] actualizarCERValuacion no está disponible');
             }
             if (window.actualizarCoeficientesCER) {
                 await window.actualizarCoeficientesCER();
-            } else {
-                console.warn('[calculadoraStorage] actualizarCoeficientesCER no está disponible');
             }
             if (window.refrescarTablaCupones) {
                 await window.refrescarTablaCupones();
-            } else {
-                console.warn('[calculadoraStorage] refrescarTablaCupones no está disponible');
             }
             
             // Recalcular factores de actualización y pagos actualizados después de cambiar fecha valuación
@@ -989,13 +978,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const valorTasa = tasaSelect.value;
-        console.log('[actualizarEstadoRentaTNA] Valor tasa:', valorTasa);
         if (valorTasa === 'tasa-fija') {
             rentaTNAInputTasa.disabled = false;
             rentaTNAInputTasa.removeAttribute('readonly');
             rentaTNAInputTasa.style.backgroundColor = 'white';
             rentaTNAInputTasa.style.cursor = 'text';
-            console.log('[actualizarEstadoRentaTNA] Input habilitado');
         } else {
             rentaTNAInputTasa.disabled = true;
             rentaTNAInputTasa.setAttribute('readonly', 'readonly');
@@ -1005,7 +992,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (valorTasa !== '') {
                 rentaTNAInputTasa.value = '';
             }
-            console.log('[actualizarEstadoRentaTNA] Input deshabilitado');
         }
     };
     
@@ -1023,8 +1009,6 @@ document.addEventListener('DOMContentLoaded', () => {
  * Actualizar decimales de renta TNA y refrescar tabla
  */
 async function actualizarDecimalesRentaTNA() {
-    console.log('[actualizarDecimalesRentaTNA] Actualizando decimales de renta TNA y refrescando tabla');
-    
     // Recalcular todos los valores de rentaTNA con los nuevos decimales
     if (window.cuponesModule && window.cuponesModule.getCuponesData) {
         const cupones = window.cuponesModule.getCuponesData();

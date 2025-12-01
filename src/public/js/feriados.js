@@ -303,8 +303,6 @@ function limpiarFiltroFeriados() {
 
 // Buscar Feriados por intervalo (consulta directa a BD)
 async function filtrarFeriadosPorIntervalo() {
-    console.log('🔍 filtrarFeriadosPorIntervalo - INICIO');
-    
     const buscarDesdeInput = document.getElementById('buscarDesdeFeriados');
     const buscarHastaInput = document.getElementById('buscarHastaFeriados');
     
@@ -315,11 +313,6 @@ async function filtrarFeriadosPorIntervalo() {
     
     const fechaDesdeStr = buscarDesdeInput.value.trim();
     const fechaHastaStr = buscarHastaInput.value.trim();
-    
-    console.log('📅 filtrarFeriadosPorIntervalo - Fechas ingresadas:', {
-        fechaDesde: fechaDesdeStr,
-        fechaHasta: fechaHastaStr
-    });
     
     // Validar que ambas fechas estén presentes
     if (!fechaDesdeStr || !fechaHastaStr) {
@@ -336,11 +329,6 @@ async function filtrarFeriadosPorIntervalo() {
     // Convertir a YYYY-MM-DD para la API
     const fechaDesdeYYYYMMDD = convertirFechaDDMMAAAAaYYYYMMDD(fechaDesdeStr);
     const fechaHastaYYYYMMDD = convertirFechaDDMMAAAAaYYYYMMDD(fechaHastaStr);
-    
-    console.log('📅 filtrarFeriadosPorIntervalo - Fechas convertidas a YYYY-MM-DD:', {
-        fechaDesdeYYYYMMDD,
-        fechaHastaYYYYMMDD
-    });
     
     // Validar que fechaDesde <= fechaHasta
     if (fechaDesdeYYYYMMDD > fechaHastaYYYYMMDD) {
@@ -394,10 +382,8 @@ async function filtrarFeriadosPorIntervalo() {
         if (result.datos && result.datos.length > 0) {
             // Generar tabla con los resultados
             generarTablaFeriados(result.datos, false);
-            console.log(`✅ filtrarFeriadosPorIntervalo - Se encontraron ${result.datos.length} registros`);
         } else {
             tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px;">No se encontraron registros en el rango especificado</td></tr>';
-            console.log('⚠️ filtrarFeriadosPorIntervalo - No se encontraron registros');
         }
     } catch (error) {
         console.error('❌ filtrarFeriadosPorIntervalo - Error:', error);
@@ -517,8 +503,6 @@ function agregarFilaFeriados(item, tbody) {
 
 // Generar tabla de Feriados (solo si está vacía) o agregar solo nuevos registros (OPTIMIZADO)
 function generarTablaFeriados(datos, soloNuevos = false) {
-    console.log('📊 generarTablaFeriados - INICIO', {
-        totalDatos: datos ? datos.length : 0,
         soloNuevos
     });
     
@@ -539,7 +523,6 @@ function generarTablaFeriados(datos, soloNuevos = false) {
             return fechaB - fechaA; // Orden descendente
         });
         
-        console.log(`📊 generarTablaFeriados - Datos ordenados: ${datosOrdenados.length} registros`);
         
         // Agregar todas las filas de una vez (más eficiente)
         datosOrdenados.forEach((item, index) => {
@@ -552,7 +535,6 @@ function generarTablaFeriados(datos, soloNuevos = false) {
             const fechaFormateada = formatearFechaMostrar(fecha);
             
             if (index < 5) { // Log solo los primeros 5 para no saturar
-                console.log(`📊 generarTablaFeriados - Item ${index + 1}: fecha="${fecha}", fechaFormateada="${fechaFormateada}", nombre="${nombre}"`);
             }
             
             const row = document.createElement('tr');
@@ -563,7 +545,6 @@ function generarTablaFeriados(datos, soloNuevos = false) {
             tbody.appendChild(row);
         });
         
-        console.log(`✅ generarTablaFeriados - Tabla generada con ${datosOrdenados.length} filas`);
         
         return datosOrdenados.length;
     } else {

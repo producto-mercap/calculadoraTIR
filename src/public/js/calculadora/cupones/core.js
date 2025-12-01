@@ -55,7 +55,7 @@ function restaurarEstadoCalculadora() {
         
         // No restaurar cupones desde sessionStorage - deben cargarse manualmente
     } catch (e) {
-        console.warn('[restaurarEstadoCalculadora] Error:', e);
+        console.error('[restaurarEstadoCalculadora] Error:', e);
     }
 }
 
@@ -84,7 +84,7 @@ function guardarEstadoFormulario() {
         
         sessionStorage.setItem('calculadora_formState', JSON.stringify(state));
     } catch (e) {
-        console.warn('[guardarEstadoFormulario] Error:', e);
+        console.error('[guardarEstadoFormulario] Error:', e);
     }
 }
 
@@ -254,7 +254,7 @@ async function renderizarCupones() {
         try {
             fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
         } catch (e) {
-            console.warn('Error al parsear fecha valuación:', e);
+            // Error silencioso al parsear fecha
         }
     }
     
@@ -720,7 +720,7 @@ function limpiarCupones() {
     try {
         sessionStorage.removeItem('calculadora_formState');
     } catch (e) {
-        console.warn('[limpiarCupones] Error al limpiar sessionStorage:', e);
+        console.error('[limpiarCupones] Error al limpiar sessionStorage:', e);
     }
     
     renderizarCupones();
@@ -776,7 +776,7 @@ function actualizarEstilosCupones() {
         try {
             fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
         } catch (e) {
-            console.warn('Error al parsear fecha valuación:', e);
+            // Error silencioso al parsear fecha
         }
     }
     
@@ -869,7 +869,6 @@ function verIntervaloEnTAMAR(cuponId, tipoTasa) {
     const cupon = cupones.find(c => c.id === cuponId);
     
     if (!cupon || !cupon.inicioIntervalo || !cupon.finalIntervalo) {
-        console.warn('[verIntervaloEnTAMAR] Cupón no encontrado o sin intervalos válidos');
         return;
     }
     
@@ -887,11 +886,4 @@ function verIntervaloEnTAMAR(cuponId, tipoTasa) {
 
 // Exportar función globalmente
 window.verIntervaloEnTAMAR = verIntervaloEnTAMAR;
-
-// Log para confirmar que el módulo está inicializado
-console.log('[core.js] window.cuponesModule inicializado:', {
-    setCuponesData: typeof window.cuponesModule.setCuponesData,
-    getCuponesData: typeof window.cuponesModule.getCuponesData,
-    renderizarCupones: typeof window.cuponesModule.renderizarCupones
-});
 

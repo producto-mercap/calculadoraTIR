@@ -246,7 +246,7 @@ function agregarFilaCER(item, tbody) {
     // Extraer fecha (formato YYYY-MM-DD)
     let fecha = item.fecha;
     if (!fecha) {
-        console.warn('Item sin fecha:', item);
+        // Item sin fecha, omitir
         return null;
     }
     if (typeof fecha === 'string' && fecha.includes('T')) {
@@ -256,7 +256,7 @@ function agregarFilaCER(item, tbody) {
     // Extraer valor CER
     const valor = item.valor;
     if (valor === null || valor === undefined) {
-        console.warn('Item sin valor:', item);
+        // Item sin valor, omitir
         return null;
     }
     
@@ -440,8 +440,6 @@ function limpiarFiltroCER() {
 
 // Buscar CER por intervalo (consulta directa a BD)
 async function filtrarCERPorIntervalo() {
-    console.log('🔍 filtrarCERPorIntervalo - INICIO');
-    
     const buscarDesdeInput = document.getElementById('buscarDesdeCER');
     const buscarHastaInput = document.getElementById('buscarHastaCER');
     
@@ -452,11 +450,6 @@ async function filtrarCERPorIntervalo() {
     
     const fechaDesdeStr = buscarDesdeInput.value.trim();
     const fechaHastaStr = buscarHastaInput.value.trim();
-    
-    console.log('📅 filtrarCERPorIntervalo - Fechas ingresadas:', {
-        fechaDesde: fechaDesdeStr,
-        fechaHasta: fechaHastaStr
-    });
     
     // Validar que ambas fechas estén presentes
     if (!fechaDesdeStr || !fechaHastaStr) {
@@ -473,11 +466,6 @@ async function filtrarCERPorIntervalo() {
     // Convertir a YYYY-MM-DD para la API
     const fechaDesdeYYYYMMDD = convertirFechaDDMMAAAAaYYYYMMDD(fechaDesdeStr);
     const fechaHastaYYYYMMDD = convertirFechaDDMMAAAAaYYYYMMDD(fechaHastaStr);
-    
-    console.log('📅 filtrarCERPorIntervalo - Fechas convertidas a YYYY-MM-DD:', {
-        fechaDesdeYYYYMMDD,
-        fechaHastaYYYYMMDD
-    });
     
     // Validar que fechaDesde <= fechaHasta
     if (fechaDesdeYYYYMMDD > fechaHastaYYYYMMDD) {
@@ -514,12 +502,10 @@ async function filtrarCERPorIntervalo() {
         if (result.success && result.datos && result.datos.length > 0) {
             // Generar tabla con los resultados
             generarTablaCER(result.datos, false);
-            console.log(`✅ filtrarCERPorIntervalo - Se encontraron ${result.datos.length} registros`);
             // Mostrar botón de exportar CSV
             mostrarBotonExportarCSV('cer');
         } else {
             tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px;">No se encontraron registros en el rango especificado</td></tr>';
-            console.log('⚠️ filtrarCERPorIntervalo - No se encontraron registros');
             // Ocultar botón de exportar CSV
             ocultarBotonExportarCSV('cer');
         }

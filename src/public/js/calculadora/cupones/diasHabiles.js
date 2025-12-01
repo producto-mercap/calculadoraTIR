@@ -92,12 +92,6 @@ async function cargarFeriadosDesdeBD(fechaDesde, fechaHasta) {
                 // Actualizar cache con datos combinados
                 feriadosCache = todasLasFechas;
                 feriadosCacheFecha = { desde: desdeCombinado, hasta: hastaCombinado };
-                
-                console.log('[cargarFeriadosDesdeBD] Cache expandido:', {
-                    desde: desdeCombinado,
-                    hasta: hastaCombinado,
-                    totalFechas: todasLasFechas.length
-                });
             } else {
                 // Si no hay cache, crear uno nuevo
                 feriadosCache = fechasNuevas;
@@ -185,15 +179,6 @@ function sumarDiasHabiles(fecha, dias, feriados = []) {
     const direccion = dias >= 0 ? 1 : -1; // 1 para adelante, -1 para atrás
     const fechaInicial = formatearFechaInputLocal(fecha);
     
-    // Log de diagnóstico
-    console.log('[sumarDiasHabiles] Inicio:', {
-        fechaInicial,
-        dias,
-        direccion: direccion === 1 ? 'adelante' : 'atrás',
-        feriadosCount: feriados.length,
-        feriadosMuestra: feriados.slice(0, 5)
-    });
-    
     while (diasRestantes > 0) {
         fechaActual.setDate(fechaActual.getDate() + direccion);
         
@@ -209,11 +194,6 @@ function sumarDiasHabiles(fecha, dias, feriados = []) {
     // Si la fecha resultante es un feriado o fin de semana, ajustar en la misma dirección
     let ajustes = 0;
     while (!esDiaHabil(fechaActual, feriados)) {
-        const motivoNoHabil = feriados.includes(formatearFechaInputLocal(fechaActual)) ? 'feriado' : 'fin de semana';
-        console.log('[sumarDiasHabiles] Ajustando:', {
-            fecha: formatearFechaInputLocal(fechaActual),
-            motivo: motivoNoHabil
-        });
         fechaActual.setDate(fechaActual.getDate() + direccion);
         ajustes++;
         if (ajustes > 30) {
@@ -221,13 +201,6 @@ function sumarDiasHabiles(fecha, dias, feriados = []) {
             break;
         }
     }
-    
-    console.log('[sumarDiasHabiles] Resultado:', {
-        fechaInicial,
-        fechaAntesAjuste,
-        fechaFinal: formatearFechaInputLocal(fechaActual),
-        ajustesRealizados: ajustes
-    });
     
     return fechaActual;
 }

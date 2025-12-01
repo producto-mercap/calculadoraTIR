@@ -270,14 +270,14 @@ async function recalcularFinalIntervalo(cupon) {
         // Con ajuste CER: SIEMPRE usar fechaLiquid (fecha liquidación del cupón)
         fechaBaseStr = cupon.fechaLiquid;
         if (!fechaBaseStr) {
-            console.warn('[recalcularFinalIntervalo] Cupón sin fechaLiquid para calculadora con ajuste CER:', cupon.id);
+            // Cupón sin fechaLiquid, omitir
             return;
         }
     } else {
         // Sin ajuste CER: usar fechaFinDev
         fechaBaseStr = cupon.fechaFinDev;
         if (!fechaBaseStr) {
-            console.warn('[recalcularFinalIntervalo] Cupón sin fechaFinDev para calculadora sin ajuste CER:', cupon.id);
+            // Cupón sin fechaFinDev, omitir
             return;
         }
     }

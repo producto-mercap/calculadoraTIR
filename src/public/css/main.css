@@ -260,6 +260,17 @@ select.input-sm {
     box-shadow: 0 0 0 2px rgba(49, 107, 161, 0.1);
 }
 
+/* Estilos para campos opcionales (no obligatorios) */
+.input-opcional,
+.input-opcional:focus {
+    background-color: rgba(173, 216, 230, 0.15) !important;
+    border-color: rgba(173, 216, 230, 0.3) !important;
+}
+
+.input-opcional::placeholder {
+    color: rgba(95, 99, 104, 0.6);
+}
+
 .form-group {
     margin-bottom: 16px;
     display: flex;

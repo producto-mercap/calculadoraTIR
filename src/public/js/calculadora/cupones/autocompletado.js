@@ -62,46 +62,20 @@ async function crearFilaInversion() {
     }
     const fechaHasta = formatearFechaInput(fechaHastaDate);
     
-    console.log('[crearFilaInversion] Rango de fechas para feriados:', { fechaDesde, fechaHasta, intervaloFin: datos.intervaloFin });
-    
     // Obtener feriados desde cache, o cargar desde BD si no hay cache
     let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
     if (!feriados || feriados.length === 0) {
-        console.log('[crearFilaInversion] No hay feriados en cache, cargando desde BD...', { fechaDesde, fechaHasta });
         feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
-        console.log('[crearFilaInversion] Feriados cargados desde BD:', feriados?.length || 0);
-    } else {
-        console.log('[crearFilaInversion] Feriados obtenidos desde cache:', feriados.length);
     }
     
     if (!feriados || feriados.length === 0) {
-        console.warn('[crearFilaInversion] No se pudieron cargar feriados, usando cálculo sin feriados');
         feriados = []; // Asegurar que sea un array vacío, no null
     }
     
     // Usar fechaLiquid (que es fechaCompra) + intervaloFin con días hábiles
     const fechaLiquid = fechaCompraDate; // En la inversión, fechaLiquid = fechaCompra
     
-    // Verificar si el feriado 2022-03-01 está en la lista
-    const feriadoMarzo = feriados.filter(f => f.includes('2022-03'));
-    console.log('[crearFilaInversion] Feriados de marzo 2022:', feriadoMarzo);
-    console.log('[crearFilaInversion] Todos los feriados:', feriados);
-    
     let finalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(fechaLiquid, datos.intervaloFin, feriados);
-    
-    // Log detallado del resultado
-    const finalIntervaloYear = finalIntervalo.getFullYear();
-    const finalIntervaloMonth = String(finalIntervalo.getMonth() + 1).padStart(2, '0');
-    const finalIntervaloDay = String(finalIntervalo.getDate()).padStart(2, '0');
-    const finalIntervaloISO = `${finalIntervaloYear}-${finalIntervaloMonth}-${finalIntervaloDay}`;
-    
-    console.log('[crearFilaInversion] Resultado sumarDiasHabiles:', {
-        fechaLiquid: formatearFechaInput(fechaLiquid),
-        intervaloFin: datos.intervaloFin,
-        feriadosCount: feriados.length,
-        finalIntervaloDirecto: finalIntervaloISO,
-        finalIntervaloConFormatear: formatearFechaInput(finalIntervalo)
-    });
     
     // Validación: si hay fecha valuación y finalIntervalo es mayor, ajustar
     // SOLO para calculadoras con ajuste CER
@@ -133,14 +107,6 @@ async function crearFilaInversion() {
     // Convertir fechas a formato DD/MM/AAAA para mostrar
     const fechaLiquidacionStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaCompraDate), '/');
     const finalIntervaloStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(finalIntervalo), '/');
-    
-    // Log para verificar el valor calculado
-    console.log('[crearFilaInversion] Final Intervalo calculado:', {
-        finalIntervaloDate: finalIntervalo,
-        finalIntervaloYYYYMMDD: formatearFechaInput(finalIntervalo),
-        finalIntervaloStr: finalIntervaloStr,
-        valorCERFinal: valorCERFinal
-    });
     
     // Formatear valor CER Final (4 decimales, usar punto como separador decimal)
     const valorCERFinalStr = valorCERFinal !== null ? valorCERFinal.toFixed(4) : '';
@@ -296,26 +262,20 @@ async function crearFilasCupones() {
     }
     
     // Cargar feriados desde cache (ya deben estar cargados manualmente)
-    console.log(`[autocompletado] Obteniendo feriados desde cache: ${fechaDesde} hasta ${fechaHasta}`);
     let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
     
     // Si no hay cache, cargar desde BD manualmente
     if (!feriados || feriados.length === 0) {
-        console.log(`[autocompletado] Cache vacío, cargando feriados desde BD...`);
         feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
     }
-    console.log(`[autocompletado] Feriados disponibles: ${feriados.length} fechas`);
     
     // Cargar valores CER desde cache (ya deben estar cargados manualmente)
-    console.log(`[autocompletado] Obteniendo valores CER desde cache: ${fechaDesde} hasta ${fechaHasta}`);
     let valoresCER = window.cuponesCER.obtenerValoresCER(fechaDesde, fechaHasta);
     
     // Si no hay cache, cargar desde BD manualmente
     if (!valoresCER || valoresCER.length === 0) {
-        console.log(`[autocompletado] Cache vacío, cargando valores CER desde BD...`);
         valoresCER = await window.cuponesCER.cargarValoresCERDesdeBD(fechaDesde, fechaHasta);
     }
-    console.log(`[autocompletado] Valores CER disponibles: ${valoresCER.length} registros`);
     
     // Crear filas de cupones
     const cupones = [];
@@ -489,20 +449,6 @@ async function crearFilasCupones() {
         const valorCERInicio = window.cuponesCER.buscarValorCERPorFecha(inicioIntervalo, valoresCER);
         const valorCERFinal = window.cuponesCER.buscarValorCERPorFecha(finalIntervalo, valoresCER);
         
-        // Debug: Log para el primer cupón
-        if (esPrimerCupon) {
-            console.log('[autocompletado] Primer cupón - Debug:', {
-                fechaInicio: formatearFechaInput(fechaInicio),
-                inicioIntervalo: formatearFechaInput(inicioIntervalo),
-                valorCERInicio,
-                valoresCERCount: valoresCER.length,
-                rangoCER: valoresCER.length > 0 ? {
-                    desde: valoresCER[0].fecha,
-                    hasta: valoresCER[valoresCER.length - 1].fecha
-                } : null
-            });
-        }
-        
         // Convertir fechas a formato DD/MM/AAAA para mostrar
         const fechaInicioStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaInicio), '/');
         const fechaFinDevStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaFinDev), '/');
@@ -579,6 +525,60 @@ async function autocompletarCupones() {
             throw new Error('window.cuponesModule.setCuponesData no está definido');
         }
         
+        // Validar campos obligatorios
+        const camposObligatorios = [
+            { id: 'ticker', nombre: 'Ticker' },
+            { id: 'fechaEmision', nombre: 'Fecha Emisión' },
+            { id: 'fechaPrimeraRenta', nombre: 'Dia de Pago' },
+            { id: 'diasRestarFechaFinDev', nombre: 'Fin Dev.' },
+            { id: 'fechaAmortizacion', nombre: 'Fecha Amortización' },
+            { id: 'porcentajeAmortizacion', nombre: 'Porcentaje Amortización' },
+            { id: 'periodicidad', nombre: 'Periodicidad' },
+            { id: 'tipoInteresDias', nombre: 'Base para contar días' },
+            { id: 'fechaCompra', nombre: 'Fecha Compra' },
+            { id: 'precioCompra', nombre: 'Precio Compra' },
+            { id: 'cantidadPartida', nombre: 'Cantidad Partida' }
+        ];
+        
+        const camposFaltantes = [];
+        camposObligatorios.forEach(campo => {
+            const elemento = document.getElementById(campo.id);
+            let valor = '';
+            
+            if (elemento) {
+                if (elemento.type === 'checkbox') {
+                    valor = elemento.checked;
+                } else if (elemento.tagName === 'SELECT') {
+                    valor = elemento.value;
+                } else {
+                    valor = elemento.value?.trim() || '';
+                }
+                
+                if (!valor || valor === '') {
+                    camposFaltantes.push(campo.nombre);
+                    // Resaltar campo faltante
+                    elemento.style.borderColor = '#d93025';
+                    elemento.style.borderWidth = '2px';
+                    
+                    // Quitar resaltado después de 3 segundos
+                    setTimeout(() => {
+                        elemento.style.borderColor = '';
+                        elemento.style.borderWidth = '';
+                    }, 3000);
+                }
+            }
+        });
+        
+        if (camposFaltantes.length > 0) {
+            const mensaje = `Por favor complete los siguientes campos obligatorios:\n${camposFaltantes.join('\n')}`;
+            if (typeof showError === 'function') {
+                showError(mensaje);
+            } else {
+                alert(mensaje);
+            }
+            return;
+        }
+        
         // Limpiar cupones existentes
         window.cuponesModule.setCuponesData([]);
         
@@ -615,21 +615,14 @@ async function autocompletarCupones() {
         
         // Actualizar CER de valuación, coeficientes y visibilidad después de cargar los cupones
         setTimeout(async () => {
-            console.log('[autocompletado] Actualizando CER y coeficientes después de cargar cupones');
             if (window.actualizarCERValuacion) {
                 await window.actualizarCERValuacion();
-            } else {
-                console.warn('[autocompletado] actualizarCERValuacion no está disponible');
             }
             if (window.actualizarCoeficientesCER) {
                 await window.actualizarCoeficientesCER();
-            } else {
-                console.warn('[autocompletado] actualizarCoeficientesCER no está disponible');
             }
             if (window.actualizarVisibilidadCoeficientesCER) {
                 window.actualizarVisibilidadCoeficientesCER();
-            } else {
-                console.warn('[autocompletado] actualizarVisibilidadCoeficientesCER no está disponible');
             }
         }, 200);
         
