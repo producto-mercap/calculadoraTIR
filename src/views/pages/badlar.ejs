@@ -13,7 +13,7 @@
         <main class="main-content">
             <div class="content-area">
                 <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
-                    <h1 class="page-title" style="margin: 0;">Valores BADLAR</h1>
+                    <h1 class="page-title" style="margin: 0; color: #5f6368;">Valores BADLAR</h1>
                     
                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px;">
                         <div style="display: inline-flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -94,7 +94,7 @@
                     </div>
                 </div>
                 
-                <div id="badlarTableContainer" style="display: none; margin: 0 auto; width: 100%; max-width: 600px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="badlarTableContainer" style="display: none; margin: 0 auto; width: 100%; max-width: 100%; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
                     <!-- Botón Exportar CSV y Promedio -->
                     <div id="btnExportarCSVBADLARContainer" style="display: none; margin-bottom: 16px; width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 24px; width: 100%;">
@@ -102,7 +102,7 @@
                                 <span style="color: var(--text-secondary);">Promedio:</span>
                                 <span id="promedioBADLARValor" style="color: var(--primary-color); margin-left: 8px;">-</span>
                             </div>
-                            <button class="btn btn-primary" onclick="abrirModalExportarCSV('badlar')" style="display: inline-flex; align-items: center; gap: 8px;">
+                            <button class="btn btn-success" onclick="abrirModalExportarCSV('badlar')" style="display: inline-flex; align-items: center; gap: 8px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                                 </svg>
@@ -114,8 +114,8 @@
                         <table class="cashflow-table" id="badlarTable" style="margin: 0 auto;">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">Fecha</th>
-                                    <th style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">Valor BADLAR</th>
+                                    <th style="width: 40% !important; min-width: 200px !important; text-align: center !important;">Fecha</th>
+                                    <th style="width: 60% !important; min-width: 300px !important; text-align: center !important;">Valor BADLAR</th>
                                 </tr>
                             </thead>
                             <tbody id="badlarTableBody">

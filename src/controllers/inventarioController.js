@@ -54,11 +54,27 @@ const inventarioController = {
                 });
             }
 
+            // Obtener fecha límite si se proporciona (puede venir de req.body o req.query)
+            let fechaLimite = null;
+            const fechaLimiteStr = req.body.fechaLimite || req.query.fechaLimite;
+            if (fechaLimiteStr) {
+                // Aceptar formato DD/MM/AAAA o DD-MM-AAAA
+                const partesFecha = String(fechaLimiteStr).trim().split(/[-\/]/);
+                if (partesFecha.length === 3) {
+                    const dia = parseInt(partesFecha[0], 10);
+                    const mes = parseInt(partesFecha[1], 10) - 1;
+                    const anio = parseInt(partesFecha[2], 10);
+                    if (!isNaN(dia) && !isNaN(mes) && !isNaN(anio)) {
+                        fechaLimite = new Date(anio, mes, dia, 23, 59, 59, 999); // Fin del día
+                    }
+                }
+            }
+
             // Procesar y ordenar los datos
             const movimientos = datos
                 .map((row, index) => {
                     // Limpiar y normalizar todos los campos, eliminando espacios en blanco
-                    const tipoMin = row.TIPO_MIN ? String(row.TIPO_MIN).trim() : '';
+                    const tipoMin = row.TIPO_MIN ? String(row.TIPO_MIN).trim().toUpperCase() : '';
                     const tipoMov = row.TIPO_MOV ? String(row.TIPO_MOV).trim().toUpperCase() : '';
                     const minutaOrigen = row.MINUTA_ORIGEN ? String(row.MINUTA_ORIGEN).trim() : '';
                     const cantidadRaw = row.CANTIDAD;
@@ -132,11 +148,18 @@ const inventarioController = {
                 })
                 .filter(mov => {
                     // Validar que tenga todos los campos necesarios (después de limpiar espacios)
-                    return mov.tipoMin && 
+                    const tieneCampos = mov.tipoMin && 
                            mov.tipoMov && 
                            mov.fecha && 
                            !isNaN(mov.cantidad) && 
                            mov.cantidad !== 0;
+                    
+                    // Si hay fecha límite, filtrar movimientos hasta esa fecha
+                    if (tieneCampos && fechaLimite) {
+                        return mov.fecha.getTime() <= fechaLimite.getTime();
+                    }
+                    
+                    return tieneCampos;
                 });
 
             // Función auxiliar para verificar si hay "pata presente" (movimiento complementario en misma fecha)
@@ -217,15 +240,15 @@ const inventarioController = {
                         return { categoria: 'B', subcategoria: 2, orden: 4 };
                     }
                     // 3 - Préstamo (Ingreso/Pata futura) (QUE NO TENGA PATA PRESENTE EN MISMA FECHA)
-                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST') {
+                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET') {
                         return { categoria: 'B', subcategoria: 3, orden: 5 };
                     }
                     // 4 - PA (Ingreso/Pata contado)
                     if (tipoMin === 'PA') {
                         return { categoria: 'B', subcategoria: 4, orden: 6 };
                     }
-                    // 5 - PF (Ingreso/Pata contado)
-                    if (tipoMin === 'PF') {
+                    // 5 - PF/PFT (Ingreso/Pata contado)
+                    if (tipoMin === 'PF' || tipoMin === 'PFT') {
                         return { categoria: 'B', subcategoria: 5, orden: 7 };
                     }
                 }
@@ -238,7 +261,7 @@ const inventarioController = {
                 // D - Egresos Futuros (con pata futura misma fecha que pata contado)
                 if (esEgreso && tienePataMismaFecha) {
                     // 1 - Préstamo (Egreso/Pata contado)
-                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST') {
+                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET') {
                         return { categoria: 'D', subcategoria: 1, orden: 9 };
                     }
                     // 2 - PP (Egreso/Pata contado)
@@ -254,7 +277,7 @@ const inventarioController = {
                 // E - Ingresos Futuros (con pata contado misma fecha que pata futuro, para que se cancelen con los de arriba)
                 if (esIngreso && tienePataMismaFecha) {
                     // 1 - Préstamo (Ingreso/Pata futura)
-                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST') {
+                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET') {
                         return { categoria: 'E', subcategoria: 1, orden: 12 };
                     }
                     // 2 - PP (Ingreso/Pata futura)
@@ -272,9 +295,9 @@ const inventarioController = {
                     // Verificar que no haya sido clasificado en A, B, C o E
                     const yaClasificado = 
                         (tipoMin === 'INGR' || tipoMin === 'ING' || tipoMin === 'C') || // A
-                        (!tienePataMismaFecha && (tipoMin === 'OCT' || tipoMin === 'PP' || tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PA' || tipoMin === 'PF')) || // B
+                        (!tienePataMismaFecha && (tipoMin === 'OCT' || tipoMin === 'PP' || tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PA' || tipoMin === 'PF' || tipoMin === 'PFT')) || // B
                         (tipoMin === 'TRFS' || tipoMin === 'TRFU' || tipoMin === 'TRFC') || // C (solo ingresos)
-                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PP' || tipoMin === 'OCT')); // E
+                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PP' || tipoMin === 'OCT')); // E
                     
                     if (!yaClasificado) {
                         return { categoria: 'F', subcategoria: 1, orden: 15 };
@@ -284,7 +307,7 @@ const inventarioController = {
                 // G - Egresos Futuros (Patas futuro de movimientos que generan partida y patas contado con pata futura a distinta fecha que pata contado)
                 if (esEgreso && !tienePataMismaFecha) {
                     // 1 - Préstamo (Egreso/Pata contado)
-                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST') {
+                    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET') {
                         return { categoria: 'G', subcategoria: 1, orden: 16 };
                     }
                     // 2 - PP (Egreso/Pata contado)
@@ -316,8 +339,8 @@ const inventarioController = {
 
                 // J (G') - Egresos Futuros (Patas futuro de movimientos que generan partida y patas contado con pata futura a distinta fecha que pata contado)
                 if (esEgreso && !tienePataMismaFecha) {
-                    // 1 - PF (Egreso/Pata futuro)
-                    if (tipoMin === 'PF') {
+                    // 1 - PF/PFT (Egreso/Pata futuro)
+                    if (tipoMin === 'PF' || tipoMin === 'PFT') {
                         return { categoria: 'J', subcategoria: 1, orden: 22 };
                     }
                     // 2 - PA (Egreso/Pata futuro)
@@ -335,10 +358,10 @@ const inventarioController = {
                     // Verificar que no haya sido clasificado en D, G, I o J
                     // Nota: C no se aplica aquí porque es solo para ingresos
                     const yaClasificadoEnDGJI = 
-                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PP' || tipoMin === 'OCT')) || // D
-                        (!tienePataMismaFecha && ((tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PP') || (tipoMin === 'OCT' && tieneOCTPataFuturoMismaFecha))) || // G
+                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PP' || tipoMin === 'OCT')) || // D
+                        (!tienePataMismaFecha && ((tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PP') || (tipoMin === 'OCT' && tieneOCTPataFuturoMismaFecha))) || // G
                         (tipoMin === 'BLOQUEO' || tipoMin === 'GARANTIA' || tipoMin === 'GARANTÍA' || tipoMin === 'BLOQ' || tipoMin === 'GAR') || // I
-                        (!tienePataMismaFecha && (tipoMin === 'PF' || tipoMin === 'PA' || (tipoMin === 'OCT' && !tieneOCTPataFuturoMismaFecha))); // J
+                        (!tienePataMismaFecha && (tipoMin === 'PF' || tipoMin === 'PFT' || tipoMin === 'PA' || (tipoMin === 'OCT' && !tieneOCTPataFuturoMismaFecha))); // J
                     
                     if (!yaClasificadoEnDGJI) {
                         // 1 - Venta
@@ -361,10 +384,10 @@ const inventarioController = {
                     // Verificar que no haya sido clasificado en D, G, I, J o K
                     // Nota: C no se aplica aquí porque es solo para ingresos
                     const yaClasificadoEnDGJIK = 
-                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PP' || tipoMin === 'OCT')) || // D
-                        (!tienePataMismaFecha && ((tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PP') || (tipoMin === 'OCT' && tieneOCTPataFuturoMismaFecha))) || // G
+                        (tienePataMismaFecha && (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PP' || tipoMin === 'OCT')) || // D
+                        (!tienePataMismaFecha && ((tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET' || tipoMin === 'PP') || (tipoMin === 'OCT' && tieneOCTPataFuturoMismaFecha))) || // G
                         (tipoMin === 'BLOQUEO' || tipoMin === 'GARANTIA' || tipoMin === 'GARANTÍA' || tipoMin === 'BLOQ' || tipoMin === 'GAR') || // I
-                        (!tienePataMismaFecha && (tipoMin === 'PF' || tipoMin === 'PA' || (tipoMin === 'OCT' && !tieneOCTPataFuturoMismaFecha))) || // J
+                        (!tienePataMismaFecha && (tipoMin === 'PF' || tipoMin === 'PFT' || tipoMin === 'PA' || (tipoMin === 'OCT' && !tieneOCTPataFuturoMismaFecha))) || // J
                         (tipoMin === 'VENTA' || tipoMin === 'V' || tipoMin === 'TRFS' || tipoMin === 'TRFU' || tipoMin === 'TRFC' || tipoMin === 'TRANSFERENCIA' || tipoMin === 'EGRESO' || tipoMin === 'EGR'); // K
                     
                     if (!yaClasificadoEnDGJIK) {
@@ -434,15 +457,48 @@ const inventarioController = {
                 return a.index - b.index;
             });
             
+            // Validar que todos los movimientos hayan sido mapeados correctamente
+            const movimientosSinMapear = [];
+            movimientos.forEach(mov => {
+                const categoria = obtenerCategoria(mov, movimientos);
+                if (categoria.categoria === 'Z' && categoria.orden === 999) {
+                    movimientosSinMapear.push({
+                        tipoMin: mov.tipoMin,
+                        tipoMov: mov.tipoMov,
+                        minutaOrigen: mov.minutaOrigen,
+                        cantidad: mov.cantidad,
+                        fecha: mov.fechaStr,
+                        index: mov.index
+                    });
+                }
+            });
+            
+            if (movimientosSinMapear.length > 0) {
+                const erroresDetalle = movimientosSinMapear.map(m => 
+                    `TIPO_MIN: "${m.tipoMin}" | TIPO_MOV: "${m.tipoMov}" | MINUTA_ORIGEN: "${m.minutaOrigen}" | CANTIDAD: ${m.cantidad} | FECHA: ${m.fecha}`
+                ).join('\n');
+                
+                return res.status(400).json({
+                    success: false,
+                    error: `No se pudo mapear ${movimientosSinMapear.length} movimiento(s). El sistema no reconoce el tipo de minuta especificado.`,
+                    detalles: `Movimientos sin mapear:\n${erroresDetalle}`,
+                    movimientosSinMapear: movimientosSinMapear
+                });
+            }
+            
             // Procesar con lógica FIFO
             const resultado = procesarFIFO(movimientos);
+
+            // Calcular sumatoria de saldos de todas las partidas (tenencia total)
+            const sumatoriaSaldos = resultado.partidas.reduce((sum, partida) => sum + partida.saldo, 0);
 
             res.json({
                 success: true,
                 partidas: resultado.partidas,
                 errores: resultado.errores,
                 totalMovimientos: movimientos.length,
-                totalPartidas: resultado.partidas.length
+                totalPartidas: resultado.partidas.length,
+                sumatoriaSaldos: sumatoriaSaldos
             });
 
         } catch (error) {
@@ -559,17 +615,15 @@ function procesarFIFO(movimientos) {
                         .filter(m => m.tipoMov === 'E')
                         .reduce((sum, m) => sum + m.cantidad, 0);
                     
-                    console.log(`[FIN DÍA] ${fechaAnteriorStr} - Saldo final disponible: ${saldoFinalDiaAnterior.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Ingresos: ${totalIngresosDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Egresos: ${totalEgresosDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
                 }
                 
-                console.log(`\n[INICIO DÍA] ${mov.fechaStr} - Saldo inicial disponible: ${saldoInicialDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} (${cantidadPartidas} partida(s))`);
                 fechaAnterior = fechaActual;
             }
 
 
             if (mov.tipoMov === 'I') {
                 // INGRESO: Crear nueva partida
-                if (['TRFU', 'C', 'ING', 'PA'].includes(mov.tipoMin)) {
+                if (['TRFU', 'C', 'ING', 'INGR', 'PA'].includes(mov.tipoMin)) {
                     const partida = {
                         id: partidaIdCounter++,
                         tipoMin: mov.tipoMin,
@@ -833,16 +887,6 @@ function procesarFIFO(movimientos) {
             const sumaPartidasNegativas = partidasNegativas.reduce((sum, p) => sum + p.saldo, 0);
             const sumaPartidasPositivas = partidasPositivas.reduce((sum, p) => sum + p.saldo, 0);
             
-            console.log(`\n[FIN DÍA] ${ultimoMovimiento.fechaStr} - Saldo final disponible: ${saldoFinal.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Ingresos: ${totalIngresosUltimoDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Egresos: ${totalEgresosUltimoDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
-            console.log(`[FIN DÍA] ${ultimoMovimiento.fechaStr} - Saldo inicial del día: ${saldoInicialUltimoDia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Saldo esperado: ${saldoEsperado.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Diferencia: ${diferencia.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} | Saldo total (incl. negativos): ${saldoTotalIncluyendoNegativos.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`);
-            console.log(`[FIN DÍA] ${ultimoMovimiento.fechaStr} - Resumen partidas: ${partidasPositivas.length} positivas (suma: ${sumaPartidasPositivas.toLocaleString('es-AR')}) | ${partidasCero.length} con saldo 0 | ${partidasNegativas.length} negativas (suma: ${sumaPartidasNegativas.toLocaleString('es-AR')})`);
-            
-            if (partidasNegativas.length > 0) {
-                console.log(`[FIN DÍA] ${ultimoMovimiento.fechaStr} - Partidas con saldo negativo:`);
-                partidasNegativas.forEach(p => {
-                    console.log(`[FIN DÍA]   Partida ${p.id} (${p.tipoMin}, ${p.fecha}): ${p.saldo.toLocaleString('es-AR')}`);
-                });
-            }
         }
     }
 

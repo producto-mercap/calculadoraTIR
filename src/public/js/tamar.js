@@ -152,8 +152,8 @@ function generarTablaTAMAR(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="width: 120px !important; max-width: 120px !important; text-align: center !important;">${formatearFechaMostrarTAMAR(fecha)}</td>
-                <td style="text-align: center !important; width: 120px !important; max-width: 120px !important;">${formatearNumeroTAMAR(valor)}</td>
+                <td style="width: 40% !important; min-width: 200px !important; text-align: center !important;">${formatearFechaMostrarTAMAR(fecha)}</td>
+                <td style="text-align: center !important; width: 60% !important; min-width: 300px !important;">${formatearNumeroTAMAR(valor)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -166,7 +166,7 @@ function generarTablaTAMAR(datos, soloNuevos = false) {
             rowPromedio.style.fontWeight = '600';
             rowPromedio.innerHTML = `
                 <td style="font-weight: 600; color: var(--text-primary); width: 120px !important; max-width: 120px !important; text-align: center !important;">Promedio</td>
-                <td style="text-align: center !important; font-weight: 600; color: var(--primary-color); width: 120px !important; max-width: 120px !important;">${formatearNumeroTAMAR(promedio)}</td>
+                <td style="text-align: center !important; font-weight: 600; color: var(--primary-color); width: 60% !important; min-width: 300px !important;">${formatearNumeroTAMAR(promedio)}</td>
             `;
             tbody.appendChild(rowPromedio);
             
@@ -235,7 +235,7 @@ async function confirmarCargarTAMAR() {
     }
     try {
         await cargarTAMAR();
-        window.location.reload();
+        // No recargar la página, los datos ya se muestran en cargarTAMAR()
     } catch (error) {
         console.error('Error al cargar TAMAR:', error);
         if (btnCargar) {

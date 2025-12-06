@@ -13,7 +13,7 @@
         <main class="main-content">
             <div class="content-area">
                 <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
-                    <h1 class="page-title" style="margin: 0;">Valores CER</h1>
+                    <h1 class="page-title" style="margin: 0; color: #5f6368;">Valores CER</h1>
                     
                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px;">
                         <div style="display: inline-flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -100,10 +100,10 @@
                     </div>
                 </div>
                 
-                <div id="cerTableContainer" style="display: none; margin: 0 auto; width: 100%; max-width: 600px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="cerTableContainer" style="display: none; margin: 0 auto; width: 100%; max-width: 100%; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
                     <!-- Botón Exportar CSV -->
                     <div id="btnExportarCSVCERContainer" style="display: none; margin-bottom: 16px; text-align: right;">
-                        <button class="btn btn-primary" onclick="abrirModalExportarCSV('cer')" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <button class="btn btn-success" onclick="abrirModalExportarCSV('cer')" style="display: inline-flex; align-items: center; gap: 8px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                             </svg>
@@ -114,8 +114,8 @@
                         <table class="cashflow-table" id="cerTable" style="margin: 0 auto;">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">Fecha</th>
-                                    <th style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">Valor CER</th>
+                                    <th style="width: 40% !important; min-width: 200px !important; text-align: center !important;">Fecha</th>
+                                    <th style="width: 60% !important; min-width: 300px !important; text-align: center !important;">Valor CER</th>
                                 </tr>
                             </thead>
                             <tbody id="cerTableBody">

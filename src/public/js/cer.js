@@ -261,8 +261,8 @@ function agregarFilaCER(item, tbody) {
     }
     
     row.innerHTML = `
-        <td style="width: 120px !important; max-width: 120px !important; text-align: center !important;">${formatearFechaMostrarCER(fecha)}</td>
-        <td style="text-align: center !important; width: 120px !important; max-width: 120px !important;">${formatearNumeroCER(valor)}</td>
+        <td style="width: 40% !important; min-width: 200px !important; text-align: center !important;">${formatearFechaMostrarCER(fecha)}</td>
+        <td style="text-align: center !important; width: 60% !important; min-width: 300px !important;">${formatearNumeroCER(valor)}</td>
     `;
     
     // Insertar en orden descendente (más reciente primero)
@@ -331,8 +331,8 @@ function generarTablaCER(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="width: 120px !important; max-width: 120px !important; text-align: center !important;">${formatearFechaMostrarCER(fecha)}</td>
-                <td style="text-align: center !important; width: 120px !important; max-width: 120px !important;">${formatearNumeroCER(valor)}</td>
+                <td style="width: 40% !important; min-width: 200px !important; text-align: center !important;">${formatearFechaMostrarCER(fecha)}</td>
+                <td style="text-align: center !important; width: 60% !important; min-width: 300px !important;">${formatearNumeroCER(valor)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -409,8 +409,7 @@ async function confirmarCargarCER() {
     }
     try {
         await cargarCER();
-        // Refrescar la página después de cargar
-        window.location.reload();
+        // No recargar la página, los datos ya se muestran en cargarCER()
     } catch (error) {
         console.error('Error al cargar CER:', error);
         if (btnCargar) {

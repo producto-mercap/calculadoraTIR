@@ -231,7 +231,7 @@ async function cargarFeriados() {
 }
 
 // Abrir modal de intervalos
-function abrirModalIntervalosFeriados() {
+window.abrirModalIntervalosFeriados = function() {
     const modal = document.getElementById('modalIntervalosFeriados');
     if (modal) {
         modal.style.display = 'flex';
@@ -252,19 +252,19 @@ function abrirModalIntervalosFeriados() {
             fechaHastaInput.value = convertirFechaYYYYMMDDaDDMMAAAA_FERIADOS(formatearFechaInput(dia15Siguiente));
         }
     }
-}
+};
 
 // Cerrar modal de intervalos
-function cerrarModalIntervalosFeriados() {
+window.cerrarModalIntervalosFeriados = function() {
     const modal = document.getElementById('modalIntervalosFeriados');
     if (modal) {
         modal.style.display = 'none';
     }
-}
+};
 
 // Confirmar y cargar Feriados
-async function confirmarCargarFeriados() {
-    cerrarModalIntervalosFeriados();
+window.confirmarCargarFeriados = async function() {
+    window.cerrarModalIntervalosFeriados();
     const btnCargar = document.getElementById('btnConfirmarCargarFeriados');
     if (btnCargar) {
         btnCargar.disabled = true;
@@ -272,8 +272,7 @@ async function confirmarCargarFeriados() {
     }
     try {
         await cargarFeriados();
-        // Refrescar la página después de cargar
-        window.location.reload();
+        // No recargar la página, los datos ya se muestran en cargarFeriados()
     } catch (error) {
         console.error('Error al cargar Feriados:', error);
         if (btnCargar) {
@@ -281,10 +280,10 @@ async function confirmarCargarFeriados() {
             btnCargar.innerHTML = 'Cargar';
         }
     }
-}
+};
 
 // Limpiar filtro Feriados
-function limpiarFiltroFeriados() {
+window.limpiarFiltroFeriados = function() {
     const buscarDesdeInput = document.getElementById('buscarDesdeFeriados');
     const buscarHastaInput = document.getElementById('buscarHastaFeriados');
     
@@ -299,10 +298,10 @@ function limpiarFiltroFeriados() {
             fila.style.display = '';
         });
     }
-}
+};
 
 // Buscar Feriados por intervalo (consulta directa a BD)
-async function filtrarFeriadosPorIntervalo() {
+window.filtrarFeriadosPorIntervalo = async function() {
     const buscarDesdeInput = document.getElementById('buscarDesdeFeriados');
     const buscarHastaInput = document.getElementById('buscarHastaFeriados');
     
@@ -411,7 +410,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                cerrarModalIntervalosFeriados();
+                window.cerrarModalIntervalosFeriados();
+            }
+        });
+    }
+    
+    // Cerrar modal de nuevo feriado al hacer clic fuera
+    const modalNuevoFeriado = document.getElementById('modalNuevoFeriado');
+    if (modalNuevoFeriado) {
+        modalNuevoFeriado.addEventListener('click', (e) => {
+            if (e.target === modalNuevoFeriado) {
+                window.cerrarModalNuevoFeriado();
             }
         });
     }
@@ -467,7 +476,7 @@ function agregarFilaFeriados(item, tbody) {
     const nombre = item.nombre || '';
     
     row.innerHTML = `
-        <td style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">${formatearFechaMostrar(fecha)}</td>
+        <td style="width: 150px !important; max-width: 150px !important; min-width: 150px !important; text-align: center !important;">${formatearFechaMostrar(fecha)}</td>
         <td style="text-align: center !important; white-space: normal !important; word-wrap: break-word !important;">${nombre}</td>
     `;
     
@@ -503,9 +512,6 @@ function agregarFilaFeriados(item, tbody) {
 
 // Generar tabla de Feriados (solo si está vacía) o agregar solo nuevos registros (OPTIMIZADO)
 function generarTablaFeriados(datos, soloNuevos = false) {
-        soloNuevos
-    });
-    
     const tbody = document.getElementById('feriadosTableBody');
     if (!tbody) {
         console.error('❌ generarTablaFeriados - tbody no encontrado');
@@ -539,7 +545,7 @@ function generarTablaFeriados(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">${fechaFormateada}</td>
+                <td style="width: 150px !important; max-width: 150px !important; min-width: 150px !important; text-align: center !important;">${fechaFormateada}</td>
                 <td style="text-align: center !important; white-space: normal !important; word-wrap: break-word !important;">${nombre}</td>
             `;
             tbody.appendChild(row);
@@ -622,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Abrir modal de nuevo feriado
-function abrirModalNuevoFeriado() {
+window.abrirModalNuevoFeriado = function() {
     const modal = document.getElementById('modalNuevoFeriado');
     if (modal) {
         modal.style.display = 'flex';
@@ -633,18 +639,18 @@ function abrirModalNuevoFeriado() {
         if (fechaInput) fechaInput.value = '';
         if (nombreInput) nombreInput.value = '';
     }
-}
+};
 
 // Cerrar modal de nuevo feriado
-function cerrarModalNuevoFeriado() {
+window.cerrarModalNuevoFeriado = function() {
     const modal = document.getElementById('modalNuevoFeriado');
     if (modal) {
         modal.style.display = 'none';
     }
-}
+};
 
 // Guardar nuevo feriado
-async function guardarNuevoFeriado() {
+window.guardarNuevoFeriado = async function() {
     const fechaInput = document.getElementById('nuevoFeriadoFecha');
     const nombreInput = document.getElementById('nuevoFeriadoNombre');
     const btnGuardar = document.getElementById('btnGuardarNuevoFeriado');
@@ -706,10 +712,20 @@ async function guardarNuevoFeriado() {
         
         if (result.success) {
             showSuccess('Feriado guardado exitosamente');
-            cerrarModalNuevoFeriado();
+            window.cerrarModalNuevoFeriado();
             
-            // Recargar la página para mostrar el nuevo feriado
-            window.location.reload();
+            // Recargar datos desde BD para mostrar el nuevo feriado
+            // Obtener fechas del buscador si existen, o usar un rango por defecto
+            const buscarDesdeInput = document.getElementById('buscarDesdeFeriados');
+            const buscarHastaInput = document.getElementById('buscarHastaFeriados');
+            
+            if (buscarDesdeInput && buscarHastaInput && buscarDesdeInput.value && buscarHastaInput.value) {
+                // Si hay fechas en el buscador, buscar en ese rango
+                window.filtrarFeriadosPorIntervalo();
+            } else {
+                // Si no, recargar la página para mostrar todos los feriados
+                window.location.reload();
+            }
         } else {
             showError(result.error || 'Error al guardar el feriado');
         }
@@ -744,7 +760,7 @@ function showSuccess(message) {
 
 // Función para mostrar mensaje de error (si no existe)
 if (typeof showError === 'undefined') {
-    function showError(message) {
+    window.showError = function(message) {
         // Crear o actualizar mensaje de error
         let errorDiv = document.getElementById('errorMessage');
         if (!errorDiv) {
@@ -760,6 +776,17 @@ if (typeof showError === 'undefined') {
         setTimeout(() => {
             errorDiv.style.display = 'none';
         }, 5000);
-    }
+    };
+}
+
+// Verificar que todas las funciones estén disponibles globalmente
+if (typeof window.abrirModalIntervalosFeriados === 'undefined') {
+    console.error('abrirModalIntervalosFeriados no está definida');
+}
+if (typeof window.filtrarFeriadosPorIntervalo === 'undefined') {
+    console.error('filtrarFeriadosPorIntervalo no está definida');
+}
+if (typeof window.abrirModalNuevoFeriado === 'undefined') {
+    console.error('abrirModalNuevoFeriado no está definida');
 }
 

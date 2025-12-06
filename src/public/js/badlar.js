@@ -142,8 +142,8 @@ function generarTablaBADLAR(datos, soloNuevos = false) {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="width: 120px !important; max-width: 120px !important; text-align: center !important;">${formatearFechaMostrarBADLAR(fecha)}</td>
-                <td style="text-align: center !important; width: 120px !important; max-width: 120px !important;">${formatearNumeroBADLAR(valor)}</td>
+                <td style="width: 40% !important; min-width: 200px !important; text-align: center !important;">${formatearFechaMostrarBADLAR(fecha)}</td>
+                <td style="text-align: center !important; width: 60% !important; min-width: 300px !important;">${formatearNumeroBADLAR(valor)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -238,7 +238,7 @@ async function confirmarCargarBADLAR() {
     }
     try {
         await cargarBADLAR();
-        window.location.reload();
+        // No recargar la página, los datos ya se muestran en cargarBADLAR()
     } catch (error) {
         console.error('Error al cargar BADLAR:', error);
         if (btnCargar) {

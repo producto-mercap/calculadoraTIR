@@ -13,7 +13,7 @@
         <main class="main-content">
             <div class="content-area">
                 <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
-                    <h1 class="page-title" style="margin: 0;">Feriados</h1>
+                    <h1 class="page-title" style="margin: 0; color: #5f6368;">Feriados</h1>
                     
                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px;">
                         <div style="display: inline-flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -41,16 +41,16 @@
                                     </svg>
                                 </button>
                             </div>
-                            <a href="#" class="btn" onclick="event.preventDefault(); filtrarFeriadosPorIntervalo();">Buscar</a>
-                            <button type="button" onclick="limpiarFiltroFeriados()" title="Limpiar filtro" style="background: none; border: none; cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='#e8e8e8'" onmouseout="this.style.background='transparent'">
+                            <a href="#" class="btn" onclick="event.preventDefault(); window.filtrarFeriadosPorIntervalo();">Buscar</a>
+                            <button type="button" onclick="window.limpiarFiltroFeriados()" title="Limpiar filtro" style="background: none; border: none; cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='#e8e8e8'" onmouseout="this.style.background='transparent'">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #5f6368;">
                                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                                 </svg>
                             </button>
                         </div>
                         <div style="display: flex; gap: 12px;">
-                            <button class="btn btn-primary" onclick="abrirModalIntervalosFeriados()" id="btnCargarFeriados" style="min-width: 150px;">Importar BCRA</button>
-                            <button class="btn btn-primary" onclick="abrirModalNuevoFeriado()" id="btnNuevoFeriado" style="min-width: 150px;">Nuevo Feriado</button>
+                            <button class="btn btn-primary" onclick="window.abrirModalIntervalosFeriados()" id="btnCargarFeriados" style="min-width: 150px;">Importar Feriados</button>
+                            <button class="btn btn-primary" onclick="window.abrirModalNuevoFeriado()" id="btnNuevoFeriado" style="min-width: 150px;">Nuevo Feriado</button>
                         </div>
                     </div>
                 </div>
@@ -60,7 +60,7 @@
                     <div class="card" style="max-width: 500px; width: 90%; position: relative;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
                             <h2 style="font-size: 20px; font-weight: 500; margin: 0;">Seleccionar Intervalo de Fechas</h2>
-                            <button onclick="cerrarModalIntervalosFeriados()" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
+                            <button onclick="window.cerrarModalIntervalosFeriados()" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                                 </svg>
@@ -91,8 +91,8 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                            <button class="btn" onclick="cerrarModalIntervalosFeriados()" style="min-width: 100px;">Cancelar</button>
-                            <button class="btn btn-primary" onclick="confirmarCargarFeriados()" id="btnConfirmarCargarFeriados" style="min-width: 100px;">Cargar</button>
+                            <button class="btn" onclick="window.cerrarModalIntervalosFeriados()" style="min-width: 100px;">Cancelar</button>
+                            <button class="btn btn-primary" onclick="window.confirmarCargarFeriados()" id="btnConfirmarCargarFeriados" style="min-width: 100px;">Cargar</button>
                         </div>
                     </div>
                 </div>
@@ -102,7 +102,7 @@
                     <div class="card" style="max-width: 500px; width: 90%; position: relative;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
                             <h2 style="font-size: 20px; font-weight: 500; margin: 0;">Nuevo Feriado</h2>
-                            <button onclick="cerrarModalNuevoFeriado()" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
+                            <button onclick="window.cerrarModalNuevoFeriado()" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                                 </svg>
@@ -126,8 +126,8 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                            <button class="btn" onclick="cerrarModalNuevoFeriado()" style="min-width: 100px;">Cancelar</button>
-                            <button class="btn btn-primary" onclick="guardarNuevoFeriado()" id="btnGuardarNuevoFeriado" style="min-width: 100px;">Guardar</button>
+                            <button class="btn" onclick="window.cerrarModalNuevoFeriado()" style="min-width: 100px;">Cancelar</button>
+                            <button class="btn btn-primary" onclick="window.guardarNuevoFeriado()" id="btnGuardarNuevoFeriado" style="min-width: 100px;">Guardar</button>
                         </div>
                     </div>
                 </div>
@@ -137,7 +137,7 @@
                         <table class="cashflow-table" id="feriadosTable" style="margin: 0 auto;">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px !important; max-width: 120px !important; min-width: 120px !important; text-align: center !important;">Fecha</th>
+                                    <th style="width: 150px !important; max-width: 150px !important; min-width: 150px !important; text-align: center !important;">Fecha</th>
                                     <th style="text-align: center !important;">Nombre</th>
                                 </tr>
                             </thead>

@@ -112,9 +112,6 @@ function procesarIngresoPP(mov, movimientos, partidas, distribucionesPP, egresos
         partida.imputaciones.push(crearImputacion(mov, dist.cantidad, partida.saldo));
     }
     
-    const saldoDespues = calcularSaldoDisponible(partidas);
-    console.log(`[INGRESO PP] ${mov.minutaOrigen} | Aplicado: ${cantidadTotalAplicada.toLocaleString('es-AR')} | Saldo después: ${saldoDespues.toLocaleString('es-AR')}`);
-    
     // Eliminar distribución si el egreso PP ya fue procesado
     if (egresosPPProcesadosRetroactivamente.has(mov.minutaOrigen)) {
         delete distribucionesPP[mov.minutaOrigen];
@@ -234,9 +231,6 @@ function procesarEgresoPP(mov, movimientos, partidas, distribucionesPP, egresosP
     
     // Guardar distribución
     distribucionesPP[mov.minutaOrigen] = distribucion;
-    
-    const saldoDespues = calcularSaldoDisponible(partidas);
-    console.log(`[EGRESO PP] ${mov.minutaOrigen} | Aplicado: ${(mov.cantidad - cantidadRestante).toLocaleString('es-AR')} | Saldo después: ${saldoDespues.toLocaleString('es-AR')}`);
     
     return { procesado: true, cantidadRestante };
 }

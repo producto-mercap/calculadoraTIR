@@ -241,6 +241,25 @@ h3 {
     background: #0d47a1;
 }
 
+/* Botón verde (success) */
+.btn-success {
+    background: #1e8e3e;
+    color: white;
+    border: none;
+    font-weight: 500;
+}
+
+.btn-success:hover {
+    background: #137333;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+    text-decoration: none;
+    color: white;
+}
+
+.btn-success:active {
+    background: #0d652d;
+}
+
 /* Inputs y formularios */
 .input {
     width: 100%;
@@ -518,7 +537,8 @@ select.input-sm {
 
 /* Tablas de variables (CER, TAMAR, BADLAR) y feriados */
 .cashflow-table {
-    width: 240px !important;
+    width: 100% !important;
+    max-width: 800px !important;
     border-collapse: collapse;
     font-size: 13px;
     table-layout: fixed !important;
@@ -548,22 +568,20 @@ select.input-sm {
     text-align: center;
 }
 
-/* Reducir ancho de columna de valores para acercar a Fecha */
+/* Ancho de columna de fecha - más ancho */
 .cashflow-table th:first-child,
 .cashflow-table td:first-child {
-    width: 120px !important;
-    max-width: 120px !important;
-    min-width: 120px !important;
-    padding-right: 4px !important;
+    width: 40% !important;
+    min-width: 200px !important;
+    padding-right: 8px !important;
 }
 
-/* Para tablas con 2 columnas (TAMAR, BADLAR, CER) - columna de valor fija */
+/* Para tablas con 2 columnas (TAMAR, BADLAR, CER) - columna de valor más ancha */
 .cashflow-table:not(#feriadosTable) th:last-child,
 .cashflow-table:not(#feriadosTable) td:last-child {
-    width: 120px !important;
-    max-width: 120px !important;
-    min-width: 120px !important;
-    padding-left: 4px !important;
+    width: 60% !important;
+    min-width: 300px !important;
+    padding-left: 8px !important;
     padding-right: 8px !important;
     text-align: center !important;
 }
