@@ -390,6 +390,9 @@ function mostrarResultados(data) {
     document.getElementById('statSumatoriaSaldos').textContent = formatearNumero(sumatoriaSaldos);
     statsContainer.style.display = 'block';
     
+    // Mostrar desglose de partidas con saldo
+    mostrarDesgloseSaldos(data.partidas || []);
+    
     // Agregar botón "Reprocesar a una fecha" si hay partidas procesadas
     if (data.partidas && data.partidas.length > 0) {
         // Eliminar botón anterior si existe
@@ -549,48 +552,9 @@ function mostrarResultados(data) {
                                             const cantidadesDifieren = Math.abs(cantidadOriginal) !== Math.abs(cantidadImputada);
                                             const rowClass = cantidadesDifieren ? 'imputacion-cantidad-diferente' : '';
                                             
-                                            // Verificar si es una imputación pendiente x PA
-                                            const esPendienteXPA = imp.pendiente === true || imp.pendienteXPA === true;
-                                            const estaResuelta = imp.resuelta === true;
-                                            const pendienteClass = esPendienteXPA ? 'imputacion-pendiente-x-pa' : '';
-                                            const pendienteStyle = esPendienteXPA && !estaResuelta ? 'background: rgba(255, 152, 0, 0.1); border-left: 3px solid #ff9800;' : 
-                                                                  esPendienteXPA && estaResuelta ? 'background: rgba(76, 175, 80, 0.15); border-left: 3px solid #4caf50;' : '';
-                                            
-                                            let pendienteBadge = '';
-                                            if (esPendienteXPA) {
-                                                if (estaResuelta) {
-                                                    const infoResolucion = imp.fechaResolucionStr ? ` el ${imp.fechaResolucionStr}` : '';
-                                                    const infoPartida = imp.partidaResolucion ? ` en partida #${imp.partidaResolucion}` : '';
-                                                    pendienteBadge = `<span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 4px;" title="Resuelta${infoResolucion}${infoPartida}">PENDIENTE x PA (RESUELTA)</span>`;
-                                                } else {
-                                                    pendienteBadge = '<span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 4px;">PENDIENTE x PA</span>';
-                                                }
-                                            }
-                                            
-                                            // Verificar si es una imputación resuelta desde pendiente x PA
-                                            const esResueltaDesdePendiente = imp.resueltaDesdePendienteXPA === true;
-                                            const resueltaClass = esResueltaDesdePendiente ? 'imputacion-resuelta-desde-pendiente' : '';
-                                            const resueltaStyle = esResueltaDesdePendiente ? 'background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50;' : '';
-                                            const resueltaBadge = esResueltaDesdePendiente ? '<span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 4px;">RESUELTA desde PA</span>' : '';
-                                            
-                                            // Combinar estilos y clases
-                                            const combinedClass = `${rowClass} ${pendienteClass} ${resueltaClass}`;
-                                            const combinedStyle = esPendienteXPA ? pendienteStyle : (esResueltaDesdePendiente ? resueltaStyle : '');
-                                            const combinedBadge = esPendienteXPA ? pendienteBadge : (esResueltaDesdePendiente ? resueltaBadge : '');
-                                            
-                                            // Información adicional para mostrar
-                                            let infoAdicional = '';
-                                            if (esPendienteXPA && !estaResuelta) {
-                                                infoAdicional = ' <span style="color: #ff9800; font-size: 11px;">(pendiente)</span>';
-                                            } else if (esPendienteXPA && estaResuelta) {
-                                                infoAdicional = ' <span style="color: #4caf50; font-size: 11px;">(resuelta)</span>';
-                                            } else if (esResueltaDesdePendiente && imp.partidaPAOrigen) {
-                                                infoAdicional = ` <span style="color: #4caf50; font-size: 11px;" title="Resuelta desde partida PA #${imp.partidaPAOrigen}">(resuelta)</span>`;
-                                            }
-                                            
                                             return `
-                                                <tr class="${combinedClass}" style="${combinedStyle}">
-                                                    <td>${imp.fechaStr}${combinedBadge}</td>
+                                                <tr class="${rowClass}">
+                                                    <td>${imp.fechaStr}</td>
                                                     <td>${imp.tipoMin}</td>
                                                     <td>${imp.tipoMov}</td>
                                                     <td>${imp.minutaOrigen}</td>
@@ -600,7 +564,7 @@ function mostrarResultados(data) {
                                                     <td style="color: ${cantidadImputada < 0 ? '#d93025' : '#1e8e3e'};">
                                                         ${cantidadImputada > 0 ? '+' : ''}${formatearNumero(cantidadImputada)}
                                                     </td>
-                                                    <td class="${impSaldoClass}">${formatearNumero(imp.saldoDespues)}${infoAdicional}</td>
+                                                    <td class="${impSaldoClass}">${formatearNumero(imp.saldoDespues)}</td>
                                                 </tr>
                                             `;
                                         }).join('')}
@@ -616,5 +580,151 @@ function mostrarResultados(data) {
         partidasContainer.innerHTML = partidasHTML;
         partidasContainer.style.display = 'block';
     }
+}
+
+/**
+ * Muestra el desglose de partidas con saldo
+ */
+function mostrarDesgloseSaldos(partidas) {
+    const desgloseContainer = document.getElementById('desgloseSaldosContainer');
+    if (!desgloseContainer) return;
+    
+    // Filtrar partidas con saldo > 0 (usando tolerancia para evitar problemas de precisión numérica)
+    const TOLERANCIA = 0.01; // Tolerancia para comparaciones de punto flotante
+    
+    // Calcular saldo real basado en cantidad inicial e imputaciones para cada partida
+    const partidasConSaldoCalculado = partidas.map(p => {
+        // Calcular saldo real desde cantidad inicial e imputaciones
+        let saldoCalculado = p.cantidadInicial || 0;
+        if (p.imputaciones && Array.isArray(p.imputaciones)) {
+            p.imputaciones.forEach(imp => {
+                saldoCalculado += imp.cantidad || 0;
+            });
+        }
+        
+        // Usar el saldo calculado si es diferente del saldo almacenado (con tolerancia)
+        const saldoAlmacenado = typeof p.saldo === 'number' ? p.saldo : parseFloat(p.saldo) || 0;
+        const diferencia = Math.abs(saldoCalculado - saldoAlmacenado);
+        
+        // Si hay diferencia significativa, usar el calculado
+        const saldoFinal = diferencia > TOLERANCIA ? saldoCalculado : saldoAlmacenado;
+        
+        return {
+            ...p,
+            saldo: saldoFinal
+        };
+    });
+    
+    const partidasConSaldo = partidasConSaldoCalculado.filter(p => {
+        const saldo = typeof p.saldo === 'number' ? p.saldo : parseFloat(p.saldo) || 0;
+        return saldo > TOLERANCIA;
+    });
+    
+    if (partidasConSaldo.length === 0) {
+        desgloseContainer.style.display = 'none';
+        return;
+    }
+    
+    // Función auxiliar para obtener fecha como objeto Date
+    function obtenerFechaParaOrdenar(partida) {
+        // Si ya es un objeto Date
+        if (partida.fecha instanceof Date) {
+            return partida.fecha;
+        }
+        
+        // Si es un string, intentar parsearlo
+        if (typeof partida.fecha === 'string') {
+            // Si viene en formato ISO (YYYY-MM-DD o similar)
+            if (partida.fecha.includes('-') || partida.fecha.includes('T')) {
+                const fecha = new Date(partida.fecha);
+                if (!isNaN(fecha.getTime())) {
+                    return fecha;
+                }
+            }
+        }
+        
+        // Si tenemos fechaStr en formato DD/MM/AAAA, parsearlo
+        if (partida.fechaStr) {
+            const partes = partida.fechaStr.split('/');
+            if (partes.length === 3) {
+                const dia = parseInt(partes[0], 10);
+                const mes = parseInt(partes[1], 10) - 1; // Mes en JS es 0-11
+                const anio = parseInt(partes[2], 10);
+                if (!isNaN(dia) && !isNaN(mes) && !isNaN(anio)) {
+                    return new Date(anio, mes, dia);
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // Ordenar por fecha (más antiguas primero)
+    partidasConSaldo.sort((a, b) => {
+        // Convertir fecha a objeto Date si es necesario
+        const fechaA = obtenerFechaParaOrdenar(a);
+        const fechaB = obtenerFechaParaOrdenar(b);
+        
+        if (!fechaA || !fechaB) return 0;
+        return fechaA.getTime() - fechaB.getTime();
+    });
+    
+    // Crear tabla HTML
+    let tablaHTML = `
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px 0;">
+                Desglose de Partidas con Saldo
+            </h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #f5f5f5; border-bottom: 2px solid #e0e0e0;">
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary);">FECHA</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary);">TIPO_MIN</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary);">TIPO_MOV</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary);">MINUTA_ORIGEN</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600; color: var(--text-primary);">SALDO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    partidasConSaldo.forEach((partida, index) => {
+        const rowClass = index % 2 === 0 ? '' : 'background: #fafafa;';
+        // Asegurarse de que saldo sea un número
+        const saldo = typeof partida.saldo === 'number' ? partida.saldo : parseFloat(partida.saldo) || 0;
+        const saldoColor = saldo > TOLERANCIA ? '#1e8e3e' : (saldo < -TOLERANCIA ? '#d93025' : '#666');
+        
+        tablaHTML += `
+            <tr style="${rowClass} border-bottom: 1px solid #e0e0e0;">
+                <td style="padding: 10px 12px; color: var(--text-primary);">${partida.fechaStr || '-'}</td>
+                <td style="padding: 10px 12px; color: var(--text-primary);">${partida.tipoMin || '-'}</td>
+                <td style="padding: 10px 12px; color: var(--text-primary);">${partida.tipoMov || '-'}</td>
+                <td style="padding: 10px 12px; color: var(--text-primary);">${partida.minutaOrigen || '-'}</td>
+                <td style="padding: 10px 12px; text-align: right; color: ${saldoColor}; font-weight: 500;">${formatearNumero(saldo)}</td>
+            </tr>
+        `;
+    });
+    
+    // Agregar fila de total
+    const totalSaldos = partidasConSaldo.reduce((sum, p) => {
+        const saldo = typeof p.saldo === 'number' ? p.saldo : parseFloat(p.saldo) || 0;
+        return sum + saldo;
+    }, 0);
+    tablaHTML += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #f5f5f5; border-top: 2px solid #e0e0e0; font-weight: 600;">
+                            <td colspan="4" style="padding: 12px; text-align: right; color: var(--text-primary);">TOTAL:</td>
+                            <td style="padding: 12px; text-align: right; color: var(--primary-color);">${formatearNumero(totalSaldos)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    desgloseContainer.innerHTML = tablaHTML;
+    desgloseContainer.style.display = 'block';
 }
 

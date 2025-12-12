@@ -52,7 +52,50 @@ function calcularSaldoInicialDia(partidas, fecha) {
 }
 
 /**
- * Obtiene partidas disponibles para aplicar egresos (FIFO)
+ * Obtiene la categoría de ordenamiento de una partida para imputaciones
+ * A - Ingresos (Contados): INGR, C
+ * B - Ingresos (patas en distintas fechas): PP, OCT, PRET/PRESTAMO (pata futura) | PA (contado), PFT (contado)
+ * C - Ingresos por Transferencia: TRF
+ */
+function obtenerCategoriaPartidaParaImputacion(partida) {
+    const tipoMin = partida.tipoMin ? partida.tipoMin.toUpperCase() : '';
+    
+    // A - Ingresos (Contados): INGR, C
+    if (tipoMin === 'INGR' || tipoMin === 'ING') {
+        return { categoria: 'A', orden: 1 };
+    }
+    if (tipoMin === 'C') {
+        return { categoria: 'A', orden: 2 };
+    }
+    
+    // B - Ingresos (patas en distintas fechas): PP, OCT, PRET/PRESTAMO (pata futura) | PA (contado), PFT (contado)
+    if (tipoMin === 'PP') {
+        return { categoria: 'B', orden: 3 };
+    }
+    if (tipoMin === 'OCT') {
+        return { categoria: 'B', orden: 4 };
+    }
+    if (tipoMin === 'PRESTAMO' || tipoMin === 'PRÉSTAMO' || tipoMin === 'PREST' || tipoMin === 'PRET') {
+        return { categoria: 'B', orden: 5 };
+    }
+    if (tipoMin === 'PA') {
+        return { categoria: 'B', orden: 6 };
+    }
+    if (tipoMin === 'PF' || tipoMin === 'PFT') {
+        return { categoria: 'B', orden: 7 };
+    }
+    
+    // C - Ingresos por Transferencia: TRF
+    if (tipoMin === 'TRFS' || tipoMin === 'TRFU' || tipoMin === 'TRFC' || tipoMin === 'TRF') {
+        return { categoria: 'C', orden: 8 };
+    }
+    
+    // Por defecto, mantener orden por fecha
+    return { categoria: 'Z', orden: 999 };
+}
+
+/**
+ * Obtiene partidas disponibles para aplicar egresos (respetando reglas de ordenamiento)
  */
 function obtenerPartidasDisponibles(partidas, incluirCerradas = false) {
     return partidas
@@ -60,7 +103,26 @@ function obtenerPartidasDisponibles(partidas, incluirCerradas = false) {
             if (p.tipoMin === 'PA') return false;
             return p.saldo > 0;
         })
-        .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+        .sort((a, b) => {
+            // PRIMERO ordenar por fecha (FIFO estricto - partidas más antiguas primero)
+            const fechaA = a.fecha ? (a.fecha.getTime ? a.fecha.getTime() : new Date(a.fecha).getTime()) : 0;
+            const fechaB = b.fecha ? (b.fecha.getTime ? b.fecha.getTime() : new Date(b.fecha).getTime()) : 0;
+            
+            if (fechaA !== fechaB) {
+                return fechaA - fechaB;
+            }
+            
+            // Si misma fecha, ordenar por categoría según reglas de ordenamiento
+            const catA = obtenerCategoriaPartidaParaImputacion(a);
+            const catB = obtenerCategoriaPartidaParaImputacion(b);
+            
+            if (catA.orden !== catB.orden) {
+                return catA.orden - catB.orden;
+            }
+            
+            // Si misma fecha y categoría, ordenar por ID (mantener orden de creación)
+            return a.id - b.id;
+        });
 }
 
 /**
@@ -94,6 +156,7 @@ module.exports = {
     calcularSaldoDisponible,
     calcularSaldoInicialDia,
     obtenerPartidasDisponibles,
+    obtenerCategoriaPartidaParaImputacion,
     esMismoDia,
     crearImputacion
 };
