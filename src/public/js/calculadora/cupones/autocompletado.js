@@ -648,6 +648,20 @@ async function autocompletarCupones() {
         // Establecer los datos en el módulo
         window.cuponesModule.setCuponesData(todosLosCupones);
         
+        // Aplicar amortización desde el último cupón hacia atrás hasta completar 100%
+        const porcentajeAmortizacion = document.getElementById('porcentajeAmortizacion')?.value || '';
+        if (porcentajeAmortizacion && window.cuponesCalculos && typeof window.cuponesCalculos.aplicarAmortizacionEnCupones === 'function') {
+            window.cuponesCalculos.aplicarAmortizacionEnCupones(todosLosCupones, porcentajeAmortizacion);
+        }
+        
+        // Aplicar valores financieros (renta TNA, recalcular valores derivados)
+        if (window.cuponesCalculos && typeof window.cuponesCalculos.aplicarValoresFinancieros === 'function') {
+            window.cuponesCalculos.aplicarValoresFinancieros(todosLosCupones, {
+                actualizarAmortizacion: false, // Ya se aplicó arriba
+                actualizarRenta: true
+            });
+        }
+        
         // Mostrar la tabla
         const container = document.getElementById('tablaCuponesContainer');
         if (container) {
