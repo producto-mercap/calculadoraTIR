@@ -41,6 +41,7 @@ const calculadorasController = {
                 spread,
                 tipoInteresDias,
                 fechaEmision,
+                fechaPrimerPago,
                 fechaPrimeraRenta,
                 diasRestarFechaFinDev,
                 fechaAmortizacion,
@@ -92,17 +93,28 @@ const calculadorasController = {
                 }
             }
 
+            // Convertir fechaPrimerPago de DD/MM/AAAA a YYYY-MM-DD si es necesario
+            let fechaPrimerPagoFormato = null;
+            if (fechaPrimerPago) {
+                if (/^\d{2}[-\/]\d{2}[-\/]\d{4}$/.test(fechaPrimerPago)) {
+                    const partes = fechaPrimerPago.split(/[-\/]/);
+                    fechaPrimerPagoFormato = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                } else {
+                    fechaPrimerPagoFormato = fechaPrimerPago;
+                }
+            }
+
             const fechaPrimeraRentaNormalizada = normalizarDiaPago(fechaPrimeraRenta);
             
             const query = `
                 INSERT INTO calculadoras (
                     nombre, fecha_compra, precio_compra, cantidad_partida,
                     ticker, tasa, formula, renta_tna, spread, tipo_interes_dias,
-                    fecha_emision, fecha_primera_renta, dias_restar_fecha_fin_dev,
+                    fecha_emision, fecha_primer_pago, fecha_primera_renta, dias_restar_fecha_fin_dev,
                     fecha_amortizacion, porcentaje_amortizacion, periodicidad,
                     intervalo_inicio, intervalo_fin, ajuste_cer
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                 RETURNING id, nombre, fecha_creacion
             `;
 
@@ -118,6 +130,7 @@ const calculadorasController = {
                 spread || null,
                 tipoInteresDias !== undefined ? tipoInteresDias : null,
                 fechaEmisionFormato,
+                fechaPrimerPagoFormato,
                 fechaPrimeraRentaNormalizada,
                 diasRestarFechaFinDev !== undefined ? diasRestarFechaFinDev : -1,
                 fechaAmortizacionFormato,
@@ -168,6 +181,7 @@ const calculadorasController = {
                 spread,
                 tipoInteresDias,
                 fechaEmision,
+                fechaPrimerPago,
                 fechaPrimeraRenta,
                 diasRestarFechaFinDev,
                 fechaAmortizacion,
@@ -216,6 +230,17 @@ const calculadorasController = {
                 }
             }
 
+            // Convertir fechaPrimerPago de DD/MM/AAAA a YYYY-MM-DD si es necesario
+            let fechaPrimerPagoFormato = null;
+            if (fechaPrimerPago) {
+                if (/^\d{2}[-\/]\d{2}[-\/]\d{4}$/.test(fechaPrimerPago)) {
+                    const partes = fechaPrimerPago.split(/[-\/]/);
+                    fechaPrimerPagoFormato = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                } else {
+                    fechaPrimerPagoFormato = fechaPrimerPago;
+                }
+            }
+
             const fechaPrimeraRentaNormalizada = normalizarDiaPago(fechaPrimeraRenta);
             
             const query = `
@@ -231,16 +256,17 @@ const calculadorasController = {
                     spread = $9,
                     tipo_interes_dias = $10,
                     fecha_emision = $11,
-                    fecha_primera_renta = $12,
-                    dias_restar_fecha_fin_dev = $13,
-                    fecha_amortizacion = $14,
-                    porcentaje_amortizacion = $15,
-                    periodicidad = $16,
-                    intervalo_inicio = $17,
-                    intervalo_fin = $18,
-                    ajuste_cer = $19,
+                    fecha_primer_pago = $12,
+                    fecha_primera_renta = $13,
+                    dias_restar_fecha_fin_dev = $14,
+                    fecha_amortizacion = $15,
+                    porcentaje_amortizacion = $16,
+                    periodicidad = $17,
+                    intervalo_inicio = $18,
+                    intervalo_fin = $19,
+                    ajuste_cer = $20,
                     fecha_actualizacion = NOW()
-                WHERE id = $20
+                WHERE id = $21
                 RETURNING id, nombre, fecha_creacion, fecha_actualizacion
             `;
 
@@ -256,7 +282,8 @@ const calculadorasController = {
                 spread || null,
                 tipoInteresDias !== undefined ? tipoInteresDias : null,
                 fechaEmisionFormato,
-                    fechaPrimeraRentaNormalizada,
+                fechaPrimerPagoFormato,
+                fechaPrimeraRentaNormalizada,
                 diasRestarFechaFinDev !== undefined ? diasRestarFechaFinDev : -1,
                 fechaAmortizacionFormato,
                 porcentajeAmortizacion || null,
@@ -448,6 +475,7 @@ const calculadorasController = {
                     spread: calculadora.spread,
                     tipoInteresDias: calculadora.tipo_interes_dias,
                     fechaEmision: convertirFecha(calculadora.fecha_emision),
+                    fechaPrimerPago: convertirFecha(calculadora.fecha_primer_pago),
                     fechaPrimeraRenta: formatearDiaPago(calculadora.fecha_primera_renta),
                     diasRestarFechaFinDev: calculadora.dias_restar_fecha_fin_dev,
                     fechaAmortizacion: convertirFecha(calculadora.fecha_amortizacion),

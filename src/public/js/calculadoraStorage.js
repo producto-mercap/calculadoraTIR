@@ -25,6 +25,7 @@ function recopilarDatosCalculadora() {
         spread: document.getElementById('spread')?.value || '',
         tipoInteresDias: document.getElementById('tipoInteresDias')?.value || '0',
         fechaEmision: document.getElementById('fechaEmision')?.value || '',
+        fechaPrimerPago: document.getElementById('fechaPrimerPago')?.value || '',
         fechaPrimeraRenta: document.getElementById('fechaPrimeraRenta')?.value || '',
         diasRestarFechaFinDev: document.getElementById('diasRestarFechaFinDev')?.value || '-1',
         fechaAmortizacion: document.getElementById('fechaAmortizacion')?.value || '',
@@ -583,6 +584,7 @@ function aplicarCalculadoraEnFormulario(calculadora = {}) {
     asignarValor('spread', calculadora.spread);
     asignarValor('tipoInteresDias', calculadora.tipoInteresDias);
     asignarValor('fechaEmision', calculadora.fechaEmision);
+    asignarValor('fechaPrimerPago', calculadora.fechaPrimerPago);
     
     const normalizarDiaPagoValor = (valor) => {
         if (!valor) return '';
@@ -637,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fechaInputs = [
         'fechaCompra',
         'fechaEmision',
-        'fechaPrimeraRenta',
+        'fechaPrimerPago',
         'fechaAmortizacion',
         'fechaValuacion'
     ];
