@@ -560,53 +560,67 @@ async function renderizarCupones() {
         }
     }
     
-    if (!ajusteCER && window.cuponesCalculos && typeof window.cuponesCalculos.calcularPromedioTAMAR === 'function') {
-        const spread = normalizarNumeroDesdeInput(document.getElementById('spread')?.value) || 0;
-        let promedioVigente = null;
-        const decimalesRentaTNA = window.cuponesCalculos && typeof window.cuponesCalculos.obtenerDecimalesRentaTNA === 'function' 
-            ? window.cuponesCalculos.obtenerDecimalesRentaTNA() : 4;
+    if (!ajusteCER && window.cuponesCalculos) {
+        const tipoTasa = document.getElementById('tasa')?.value || '';
+        const tipoTasaLower = tipoTasa.toLowerCase();
         
-        // Paso 1: Calcular TAMAR solo para cupones que NO son posteriores al vigente (una sola vez cada uno)
-        const cuponesParaCalcular = cuponesData.filter(cupon => 
-            cupon.id !== 'inversion' && 
-            !cupon.esPosteriorAlVigente && 
-            cupon.inicioIntervalo && 
-            cupon.finalIntervalo
-        );
+        // Determinar qué función usar según el tipo de tasa
+        const calcularPromedioFunc = tipoTasaLower === 'badlar' 
+            ? (window.cuponesCalculos.calcularPromedioBADLAR && typeof window.cuponesCalculos.calcularPromedioBADLAR === 'function' 
+                ? window.cuponesCalculos.calcularPromedioBADLAR 
+                : null)
+            : (window.cuponesCalculos.calcularPromedioTAMAR && typeof window.cuponesCalculos.calcularPromedioTAMAR === 'function' 
+                ? window.cuponesCalculos.calcularPromedioTAMAR 
+                : null);
         
-        // Calcular todos en paralelo para mejor rendimiento
-        const resultados = await Promise.all(
-            cuponesParaCalcular.map(async cupon => {
-                const promedio = await window.cuponesCalculos.calcularPromedioTAMAR(cupon);
-                return { cupon, promedio };
-            })
-        );
-        
-        // Procesar resultados y guardar el promedio del vigente
-        for (const { cupon, promedio } of resultados) {
-            if (promedio !== null && isFinite(promedio)) {
-                if (cupon.id === cuponVigenteId) {
-                    promedioVigente = promedio;
+        if (calcularPromedioFunc) {
+            const spread = normalizarNumeroDesdeInput(document.getElementById('spread')?.value) || 0;
+            let promedioVigente = null;
+            const decimalesRentaTNA = window.cuponesCalculos && typeof window.cuponesCalculos.obtenerDecimalesRentaTNA === 'function' 
+                ? window.cuponesCalculos.obtenerDecimalesRentaTNA() : 4;
+            
+            // Paso 1: Calcular promedio (TAMAR o BADLAR) solo para cupones que NO son posteriores al vigente (una sola vez cada uno)
+            const cuponesParaCalcular = cuponesData.filter(cupon => 
+                cupon.id !== 'inversion' && 
+                !cupon.esPosteriorAlVigente && 
+                cupon.inicioIntervalo && 
+                cupon.finalIntervalo
+            );
+            
+            // Calcular todos en paralelo para mejor rendimiento
+            const resultados = await Promise.all(
+                cuponesParaCalcular.map(async cupon => {
+                    const promedio = await calcularPromedioFunc(cupon);
+                    return { cupon, promedio };
+                })
+            );
+            
+            // Procesar resultados y guardar el promedio del vigente
+            for (const { cupon, promedio } of resultados) {
+                if (promedio !== null && isFinite(promedio)) {
+                    if (cupon.id === cuponVigenteId) {
+                        promedioVigente = promedio;
+                    }
                 }
             }
-        }
-        
-        // Paso 2: Aplicar el promedio del vigente a los cupones posteriores
-        if (promedioVigente !== null) {
-            for (const cupon of cuponesData) {
-                if (cupon.id === 'inversion') continue;
-                
-                if (cupon.esPosteriorAlVigente) {
-                    actualizarCampoCupon(cupon, 'promedioTasa', formatearNumero(promedioVigente, 4));
-                    const rentaTNAReplica = promedioVigente + spread;
-                    actualizarCampoCupon(cupon, 'rentaTNA', formatearNumero(rentaTNAReplica, decimalesRentaTNA));
+            
+            // Paso 2: Aplicar el promedio del vigente a los cupones posteriores
+            if (promedioVigente !== null) {
+                for (const cupon of cuponesData) {
+                    if (cupon.id === 'inversion') continue;
+                    
+                    if (cupon.esPosteriorAlVigente) {
+                        actualizarCampoCupon(cupon, 'promedioTasa', formatearNumero(promedioVigente, 4));
+                        const rentaTNAReplica = promedioVigente + spread;
+                        actualizarCampoCupon(cupon, 'rentaTNA', formatearNumero(rentaTNAReplica, decimalesRentaTNA));
+                    }
                 }
             }
         }
     }
-    // Para calculadoras con ajuste CER, NO calcular promedio TAMAR
-    // La rentaTNA debe venir del input del formulario, no del promedio TAMAR
-    // (calcularPromedioTAMAR solo es para calculadoras sin ajuste CER)
+    // Para calculadoras con ajuste CER, NO calcular promedio TAMAR/BADLAR
+    // La rentaTNA debe venir del input del formulario, no del promedio TAMAR/BADLAR
+    // (calcularPromedioTAMAR/calcularPromedioBADLAR solo es para calculadoras sin ajuste CER)
     
     if (window.cuponesCalculos && typeof window.cuponesCalculos.recalcularValoresDerivados === 'function') {
         window.cuponesCalculos.recalcularValoresDerivados(cuponesData);
@@ -639,10 +653,24 @@ async function actualizarCupon(cuponId, campo, valor) {
                 await window.cuponesRecalculos.recalcularFinalIntervaloSinRecalculosAdicionales(cupon);
             }
             
-            // Si cambian los intervalos, recalcular promedio TAMAR (solo si no es posterior al vigente)
+            // Si cambian los intervalos, recalcular promedio TAMAR o BADLAR (solo si no es posterior al vigente)
             if ((campo === 'inicioIntervalo' || campo === 'finalIntervalo') && !cupon.esPosteriorAlVigente) {
-                if (cupon.inicioIntervalo && cupon.finalIntervalo && window.cuponesCalculos && typeof window.cuponesCalculos.calcularPromedioTAMAR === 'function') {
-                    await window.cuponesCalculos.calcularPromedioTAMAR(cupon);
+                if (cupon.inicioIntervalo && cupon.finalIntervalo && window.cuponesCalculos) {
+                    const tipoTasa = document.getElementById('tasa')?.value || '';
+                    const tipoTasaLower = tipoTasa.toLowerCase();
+                    
+                    // Determinar qué función usar según el tipo de tasa
+                    const calcularPromedioFunc = tipoTasaLower === 'badlar' 
+                        ? (window.cuponesCalculos.calcularPromedioBADLAR && typeof window.cuponesCalculos.calcularPromedioBADLAR === 'function' 
+                            ? window.cuponesCalculos.calcularPromedioBADLAR 
+                            : null)
+                        : (window.cuponesCalculos.calcularPromedioTAMAR && typeof window.cuponesCalculos.calcularPromedioTAMAR === 'function' 
+                            ? window.cuponesCalculos.calcularPromedioTAMAR 
+                            : null);
+                    
+                    if (calcularPromedioFunc) {
+                        await calcularPromedioFunc(cupon);
+                    }
                 }
             }
         }

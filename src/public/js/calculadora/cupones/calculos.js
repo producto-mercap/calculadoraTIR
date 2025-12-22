@@ -384,6 +384,7 @@ window.cuponesCalculos = {
     calcularTIR,
     recalcularFlujos: recalcularFlujosCupones,
     calcularPromedioTAMAR: calcularPromedioTAMARParaCupon,
+    calcularPromedioBADLAR: calcularPromedioBADLARParaCupon,
     obtenerDecimalesRentaTNA
 };
 
@@ -473,6 +474,96 @@ async function calcularPromedioTAMARParaCupon(cupon) {
 
     } catch (error) {
         console.error('Error al calcular promedio TAMAR:', error);
+        return null;
+    }
+}
+
+// Caché para consultas BADLAR - evita llamadas repetidas a la API
+const badlarCache = new Map();
+const BADLAR_CACHE_MS = 5 * 60 * 1000; // 5 minutos de caché
+
+/**
+ * Obtener datos BADLAR con caché
+ */
+async function obtenerBADLARConCache(fechaDesde, fechaHasta) {
+    const cacheKey = `${fechaDesde}_${fechaHasta}`;
+    const ahora = Date.now();
+    
+    // Verificar caché
+    const cached = badlarCache.get(cacheKey);
+    if (cached && (ahora - cached.time) < BADLAR_CACHE_MS) {
+        return cached.data;
+    }
+    
+    // Obtener valores BADLAR desde la API
+    const response = await fetch(`/api/badlar/bd?desde=${fechaDesde}&hasta=${fechaHasta}`);
+    const result = await response.json();
+    
+    // Guardar en caché
+    badlarCache.set(cacheKey, { data: result, time: ahora });
+    
+    return result;
+}
+
+/**
+ * Limpiar caché de BADLAR (llamar cuando se cambian parámetros significativos)
+ */
+function limpiarCacheBADLAR() {
+    badlarCache.clear();
+}
+
+/**
+ * Calcular promedio de BADLAR para un cupón entre inicio y final intervalo
+ */
+async function calcularPromedioBADLARParaCupon(cupon) {
+    if (!cupon.inicioIntervalo || !cupon.finalIntervalo) {
+        return null;
+    }
+
+    try {
+        // Convertir fechas de DD/MM/AAAA a YYYY-MM-DD
+        let fechaDesde = cupon.inicioIntervalo;
+        let fechaHasta = cupon.finalIntervalo;
+        
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaDesde)) {
+            fechaDesde = convertirFechaDDMMAAAAaYYYYMMDD(fechaDesde);
+        }
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaHasta)) {
+            fechaHasta = convertirFechaDDMMAAAAaYYYYMMDD(fechaHasta);
+        }
+
+        // Obtener valores BADLAR con caché
+        const result = await obtenerBADLARConCache(fechaDesde, fechaHasta);
+
+        if (!result.success || !result.datos || result.datos.length === 0) {
+            return null;
+        }
+
+        // Calcular promedio aritmético
+        const valores = result.datos.map(item => parseFloat(item.valor || 0)).filter(v => !isNaN(v) && v > 0);
+        
+        if (valores.length === 0) {
+            return null;
+        }
+
+        const suma = valores.reduce((acc, val) => acc + val, 0);
+        const promedio = suma / valores.length;
+
+        // Actualizar el campo promedioTasa en el cupón
+        actualizarCampoCupon(cupon, 'promedioTasa', formatearNumero(promedio, 4));
+
+        // Obtener spread y calcular Renta TNA
+        const spread = normalizarNumeroDesdeInput(document.getElementById('spread')?.value) || 0;
+        const rentaTNA = promedio + spread;
+        
+        // Actualizar Renta TNA del cupón
+        const decimalesRentaTNA = obtenerDecimalesRentaTNA();
+        actualizarCampoCupon(cupon, 'rentaTNA', formatearNumero(rentaTNA, decimalesRentaTNA));
+
+        return promedio;
+
+    } catch (error) {
+        console.error('Error al calcular promedio BADLAR:', error);
         return null;
     }
 }
