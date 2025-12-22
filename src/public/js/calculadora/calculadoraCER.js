@@ -287,6 +287,7 @@ async function actualizarCoeficientesCER() {
     const fechaEmisionInput = document.getElementById('fechaEmision');
     const fechaCompraInput = document.getElementById('fechaCompra');
     const intervaloFinInput = document.getElementById('intervaloFin');
+    const intervaloInicioInput = document.getElementById('intervaloInicio');
     const coefCEREmisionSpan = document.getElementById('coefCEREmision');
     const coefCERCompraSpan = document.getElementById('coefCERCompra');
     const cerEmisionValorSpan = document.getElementById('valorCEREmision');
@@ -336,6 +337,7 @@ async function actualizarCoeficientesCER() {
     }
     
     const intervaloFin = parseInt(intervaloFinInput.value || '0', 10);
+    const intervaloInicio = parseInt(intervaloInicioInput?.value || '0', 10);
     
     // Resetear valores
     coefCEREmisionSpan.textContent = '-';
@@ -435,10 +437,16 @@ async function actualizarCoeficientesCER() {
         }
         
         // Calcular Coeficiente CER Compra
+        // CER Compra se calcula usando fechaCompra + intervaloInicio (no intervaloFin)
         if (fechaCompraStr && fechaCompraStr.length === 10) {
             const fechaCompraDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaCompraStr));
             if (fechaCompraDate) {
-                cerCompra = await obtenerCERParaFecha(fechaCompraDate, intervaloFin);
+                console.log('[actualizarCoeficientesCER] Calculando CER Compra con fechaCompra + intervaloInicio', {
+                    fechaCompraStr,
+                    intervaloInicio
+                });
+                cerCompra = await obtenerCERParaFecha(fechaCompraDate, intervaloInicio);
+                console.log('[actualizarCoeficientesCER] CER Compra obtenido:', cerCompra);
                 if (cerCompra !== null && cerCompra !== 0) {
                     const coefCompra = cerValuacion / cerCompra;
                     const decimales = obtenerDecimalesAjustes();
