@@ -106,34 +106,165 @@ async function crearFilaInversion() {
     const flujo = -(precioCompraNum * cantidadPartidaNum);
     
     // Convertir fechas a formato DD/MM/AAAA para mostrar
-    const fechaLiquidacionStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaCompraDate), '/');
+    const fechaLiquidacionStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaLiquid), '/');
     const finalIntervaloStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(finalIntervalo), '/');
-    
-    // Formatear valor CER Final (4 decimales, usar punto como separador decimal)
-    const valorCERFinalStr = valorCERFinal !== null ? valorCERFinal.toFixed(4) : '';
     
     return {
         id: 'inversion',
-        cupon: 'Inversión',
+        numeroCupon: '',
         fechaInicio: '',
         fechaFinDev: '',
         fechaLiquid: fechaLiquidacionStr,
         inicioIntervalo: '',
         finalIntervalo: finalIntervaloStr,
         valorCERInicio: '',
-        valorCERFinal: valorCERFinalStr,
+        valorCERFinal: valorCERFinal || '',
+        promedioTasa: '',
         dayCountFactor: '',
-        amortiz: '',
+        amortizacion: '',
         valorResidual: '',
-        amortizAjustada: '',
+        amortizacionAjustada: '',
         rentaNominal: '',
         rentaTNA: '',
         rentaAjustada: '',
-        factorActualiz: '',
-        pagosActualiz: '',
-        flujos: flujo.toFixed(2),
+        factorActualizacion: '',
+        pagosActualizados: '',
+        flujos: flujo,
         flujosDesc: ''
     };
+}
+
+/**
+ * Construir todos los cupones del bono desde emisión hasta amortización
+ * @param {Date} fechaEmisionDate - Fecha de emisión
+ * @param {Date} fechaPrimerPagoDate - Fecha del primer pago
+ * @param {string} periodicidad - Periodicidad
+ * @param {Date} fechaAmortizacionDate - Fecha de amortización (opcional)
+ * @param {string} fechaPrimeraRenta - Día de pago (1-31)
+ * @returns {Array} Array de objetos con {numeroCupon, fechaPago}
+ */
+function construirCuponesDelBono(fechaEmisionDate, fechaPrimerPagoDate, periodicidad, fechaAmortizacionDate, fechaPrimeraRenta) {
+    const normalizarFecha = (fecha) => {
+        return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    };
+    
+    // Obtener día de pago usando la función del módulo
+    const obtenerDiaPago = (fechaPrimeraRenta) => {
+        if (!fechaPrimeraRenta) return null;
+        const valor = fechaPrimeraRenta.toString().trim();
+        if (/^\d{1,2}$/.test(valor)) {
+            const dia = parseInt(valor, 10);
+            return dia >= 1 && dia <= 31 ? dia : null;
+        }
+        if (/^\d{1,2}\/\d{1,2}$/.test(valor)) {
+            const partes = valor.split('/');
+            const dia = parseInt(partes[0], 10);
+            return dia >= 1 && dia <= 31 ? dia : null;
+        }
+        return null;
+    };
+    
+    const obtenerMesesPorPeriodo = (periodicidad) => {
+        switch ((periodicidad || '').toLowerCase()) {
+            case 'mensual':
+                return 1;
+            case 'bimestral':
+                return 2;
+            case 'trimestral':
+                return 3;
+            case 'semestral':
+                return 6;
+            case 'anual':
+                return 12;
+            default:
+                return null;
+        }
+    };
+    
+    const ajustarDiaAlMes = (fechaBase, diaPago) => {
+        const fecha = new Date(fechaBase.getFullYear(), fechaBase.getMonth(), 1);
+        const ultimoDia = new Date(fechaBase.getFullYear(), fechaBase.getMonth() + 1, 0).getDate();
+        fecha.setDate(Math.min(Math.max(1, diaPago), ultimoDia));
+        return fecha;
+    };
+    
+    // Obtener día de pago
+    const diaPago = obtenerDiaPago(fechaPrimeraRenta);
+    if (diaPago === null) {
+        return [];
+    }
+    
+    // Calcular meses según periodicidad
+    const mesesPorPeriodo = obtenerMesesPorPeriodo(periodicidad);
+    if (!mesesPorPeriodo) {
+        return [];
+    }
+    
+    const cupones = [];
+    
+    // Primer cupón: número 1, fecha de pago = fechaPrimerPago
+    cupones.push({
+        numeroCupon: 1,
+        fechaPago: normalizarFecha(fechaPrimerPagoDate)
+    });
+    
+    // Construir cupones siguientes usando periodicidad
+    let fechaActual = new Date(fechaPrimerPagoDate);
+    let numeroCupon = 2;
+    const maxCupones = 120; // Límite de seguridad
+    
+    while (numeroCupon <= maxCupones) {
+        // Avanzar según periodicidad
+        fechaActual.setMonth(fechaActual.getMonth() + mesesPorPeriodo);
+        fechaActual = ajustarDiaAlMes(fechaActual, diaPago);
+        
+        const fechaActualNormalizada = normalizarFecha(fechaActual);
+        
+        // Si hay fecha de amortización y la fecha actual es mayor, detener
+        if (fechaAmortizacionDate) {
+            const fechaAmortizacionNormalizada = normalizarFecha(fechaAmortizacionDate);
+            if (fechaActualNormalizada > fechaAmortizacionNormalizada) {
+                break;
+            }
+        }
+        
+        cupones.push({
+            numeroCupon: numeroCupon,
+            fechaPago: fechaActualNormalizada
+        });
+        
+        numeroCupon++;
+    }
+    
+    return cupones;
+}
+
+/**
+ * Filtrar cupones para el cashflow basándose en fecha de compra
+ * @param {Array} cuponesDelBono - Array de cupones del bono
+ * @param {Date} fechaCompraDate - Fecha de compra
+ * @returns {Array} Array de cupones filtrados (desde el cupón vigente en adelante)
+ */
+function filtrarCuponesParaCashflow(cuponesDelBono, fechaCompraDate) {
+    const normalizarFecha = (fecha) => {
+        return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    };
+    
+    const fechaCompraNormalizada = normalizarFecha(fechaCompraDate);
+    
+    // Encontrar el cupón vigente: el primero con fechaPago >= fechaCompra
+    const indiceCuponVigente = cuponesDelBono.findIndex(cupon => {
+        const fechaPagoNormalizada = normalizarFecha(cupon.fechaPago);
+        return fechaPagoNormalizada >= fechaCompraNormalizada;
+    });
+    
+    if (indiceCuponVigente === -1) {
+        // No se encontró cupón vigente, retornar el último cupón
+        return cuponesDelBono.slice(-1);
+    }
+    
+    // Retornar desde el cupón vigente en adelante
+    return cuponesDelBono.slice(indiceCuponVigente);
 }
 
 /**
@@ -157,111 +288,33 @@ async function crearFilasCupones() {
         return [];
     }
     
-    // Calcular el número del primer cupón (el siguiente a la fecha de compra)
-    // Usar fechaPrimerPago como base para el cálculo
-    const numeroPrimerCupon = window.cuponesCalculoCupones.calcularNumeroPrimerCupon(
+    // PASO 1: Construir TODOS los cupones del bono desde emisión hasta amortización
+    const cuponesDelBono = construirCuponesDelBono(
         fechaEmisionDate,
-        datos.fechaPrimeraRenta,
+        fechaPrimerPagoDate,
         datos.periodicidad,
-        fechaCompraDate
+        fechaAmortizacionDate,
+        datos.fechaPrimeraRenta
     );
     
-    // Calcular fechas de cupones (hasta fechaAmortizacion si existe)
-    // Primero calcular las fechas normalmente, luego reemplazar la primera con fechaPrimerPago
-    let fechasCupones = window.cuponesCalculoCupones.calcularFechasCupones(
-        fechaEmisionDate,
-        datos.fechaPrimeraRenta,
-        datos.periodicidad,
-        fechaCompraDate,
-        fechaAmortizacionDate
-    );
-    
-    // Si hay fechaPrimerPago, reemplazar la primera fecha de cupón con esta fecha
-    // y eliminar cualquier otra fecha que coincida con fechaPrimerPago para evitar duplicados
-    if (fechasCupones.length > 0 && fechaPrimerPagoDate) {
-        // Normalizar fechaPrimerPago para comparación (solo año, mes, día)
-        const fechaPrimerPagoNormalizada = new Date(fechaPrimerPagoDate.getFullYear(), fechaPrimerPagoDate.getMonth(), fechaPrimerPagoDate.getDate());
-        
-        // Función para normalizar fechas para comparación
-        const normalizarFecha = (fecha) => {
-            return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-        };
-        
-        // Reemplazar la primera fecha con fechaPrimerPago
-        fechasCupones[0] = fechaPrimerPagoNormalizada;
-        
-        // Filtrar cualquier otra fecha que coincida con fechaPrimerPago (evitar duplicados)
-        // Mantener solo la primera ocurrencia (que ya reemplazamos)
-        const fechasCuponesFiltradas = [fechasCupones[0]]; // Incluir la primera (fechaPrimerPago)
-        
-        for (let i = 1; i < fechasCupones.length; i++) {
-            const fechaNormalizada = normalizarFecha(fechasCupones[i]);
-            // Si la fecha no coincide con fechaPrimerPago, incluirla
-            if (fechaNormalizada.getTime() !== fechaPrimerPagoNormalizada.getTime()) {
-                fechasCuponesFiltradas.push(fechasCupones[i]);
-            }
-        }
-        
-        fechasCupones = fechasCuponesFiltradas;
+    if (cuponesDelBono.length === 0) {
+        return [];
     }
     
-    if (fechasCupones.length === 0) {
+    // PASO 2: Filtrar cupones para el cashflow basándose en fecha de compra
+    const cuponesParaCashflow = filtrarCuponesParaCashflow(cuponesDelBono, fechaCompraDate);
+    
+    if (cuponesParaCashflow.length === 0) {
         return [];
     }
     
     // Calcular rango amplio de fechas para cargar feriados UNA SOLA VEZ
-    // Incluir margen para intervalos (pueden ir hacia atrás o adelante)
-    let fechaMinima = new Date(fechasCupones[0]);
-    const fechaMaxima = new Date(fechasCupones[fechasCupones.length - 1]);
+    let fechaMinima = new Date(cuponesParaCashflow[0].fechaPago);
+    let fechaMaxima = new Date(cuponesParaCashflow[cuponesParaCashflow.length - 1].fechaPago);
     
-    // Para el primer cupón, la fecha inicio es la fecha de pago del cupón anterior
-    // Necesitamos incluir esa fecha en el rango mínimo
-    if (fechasCupones.length > 0) {
-        // Calcular meses según periodicidad
-        let mesesPorPeriodo;
-        switch (datos.periodicidad.toLowerCase()) {
-            case 'mensual':
-                mesesPorPeriodo = 1;
-                break;
-            case 'bimestral':
-                mesesPorPeriodo = 2;
-                break;
-            case 'trimestral':
-                mesesPorPeriodo = 3;
-                break;
-            case 'semestral':
-                mesesPorPeriodo = 6;
-                break;
-            case 'anual':
-                mesesPorPeriodo = 12;
-                break;
-            default:
-                mesesPorPeriodo = 1;
-        }
-        
-        // Calcular fecha de pago del cupón anterior (fecha inicio del primer cupón)
-        const fechaPagoPrimerCupon = fechasCupones[0];
-        const fechaPagoAnterior = new Date(fechaPagoPrimerCupon);
-        fechaPagoAnterior.setMonth(fechaPagoAnterior.getMonth() - mesesPorPeriodo);
-        
-        // Usar la fecha más antigua entre fechaPagoAnterior y fechaMinima
-        if (fechaPagoAnterior < fechaMinima) {
-            fechaMinima = new Date(fechaPagoAnterior);
-        }
-        
-        // Considerar también el intervaloInicio (puede ser negativo y retroceder días)
-        // El inicioIntervalo del primer cupón será: fechaPagoAnterior + intervaloInicio (en días hábiles)
-        // Para asegurar que esté en el rango, restar el intervaloInicio si es negativo
-        if (datos.intervaloInicio < 0) {
-            // Si intervaloInicio es negativo, el inicioIntervalo será anterior a fechaPagoAnterior
-            // Ajustar fechaMinima para incluir ese rango
-            const diasRetroceso = Math.abs(datos.intervaloInicio) + 30; // Margen adicional
-            const fechaMinimaAjustada = new Date(fechaPagoAnterior);
-            fechaMinimaAjustada.setDate(fechaMinimaAjustada.getDate() - diasRetroceso);
-            if (fechaMinimaAjustada < fechaMinima) {
-                fechaMinima = fechaMinimaAjustada;
-            }
-        }
+    // Incluir fecha de emisión en el rango mínimo (para el primer cupón del bono)
+    if (fechaEmisionDate < fechaMinima) {
+        fechaMinima = new Date(fechaEmisionDate);
     }
     
     // Calcular márgenes considerando los intervalos
@@ -294,45 +347,66 @@ async function crearFilasCupones() {
         return [];
     }
     
-    // Cargar feriados desde cache (ya deben estar cargados manualmente)
+    // Cargar feriados desde cache o BD
     let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
-    
-    // Si no hay cache, cargar desde BD manualmente
     if (!feriados || feriados.length === 0) {
         feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
     }
     
-    // Cargar valores CER desde cache (ya deben estar cargados manualmente)
+    // Cargar valores CER desde cache o BD
     let valoresCER = window.cuponesCER.obtenerValoresCER(fechaDesde, fechaHasta);
-    
-    // Si no hay cache, cargar desde BD manualmente
     if (!valoresCER || valoresCER.length === 0) {
         valoresCER = await window.cuponesCER.cargarValoresCERDesdeBD(fechaDesde, fechaHasta);
     }
     
-    // Crear filas de cupones
+    // PASO 3: Crear objetos de cupones para el cashflow
     const cupones = [];
-    let contadorCupon = numeroPrimerCupon; // Empezar con el número correcto
-    const esUltimoCupon = (index) => index === fechasCupones.length - 1;
+    const esUltimoCupon = (index) => index === cuponesParaCashflow.length - 1;
     let fechaFinDevAnterior = null; // Guardar fecha fin dev del cupón anterior
     
-    for (let i = 0; i < fechasCupones.length; i++) {
-        const fechaPago = fechasCupones[i];
+    // Normalizar fechas para comparación
+    const normalizarFecha = (fecha) => {
+        return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    };
+    
+    // Si el primer cupón del cashflow no es el cupón número 1 del bono,
+    // necesitamos calcular la fechaFinDev del cupón anterior del bono
+    const esPrimerCuponCashflow = cuponesParaCashflow.length > 0;
+    const primerCuponCashflow = cuponesParaCashflow[0];
+    const esPrimerCuponBono = primerCuponCashflow && primerCuponCashflow.numeroCupon === 1;
+    
+    if (esPrimerCuponCashflow && !esPrimerCuponBono && primerCuponCashflow) {
+        // Buscar el cupón anterior en cuponesDelBono
+        const indiceCuponAnterior = cuponesDelBono.findIndex(c => c.numeroCupon === primerCuponCashflow.numeroCupon - 1);
+        if (indiceCuponAnterior !== -1) {
+            const cuponAnteriorBono = cuponesDelBono[indiceCuponAnterior];
+            // Calcular fechaFinDev del cupón anterior del bono
+            fechaFinDevAnterior = window.cuponesCalculoCupones.calcularFechaFinDev(
+                cuponAnteriorBono.fechaPago,
+                datos.fechaPrimeraRenta,
+                datos.periodicidad,
+                datos.diasRestarFechaFinDev
+            );
+        }
+    }
+    
+    for (let i = 0; i < cuponesParaCashflow.length; i++) {
+        const cuponBono = cuponesParaCashflow[i];
+        const fechaPago = cuponBono.fechaPago;
+        const numeroCupon = cuponBono.numeroCupon;
         const esUltimo = esUltimoCupon(i);
-        const esPrimerCupon = i === 0;
+        const esPrimerCuponBonoActual = numeroCupon === 1; // Primer cupón del bono (número 1)
+        const esPrimerCuponCashflowActual = i === 0; // Primer cupón del cashflow
         
         // Calcular fecha liquidación
-        // Si es el último cupón y hay fechaAmortizacion, usar esa fecha (ajustada a día hábil)
         let fechaLiquidacion;
         if (esUltimo && fechaAmortizacionDate) {
             fechaLiquidacion = window.cuponesDiasHabiles.obtenerProximoDiaHabil(fechaAmortizacionDate, feriados);
         } else {
-            // Fecha pago, si no es hábil, próximo hábil
             fechaLiquidacion = window.cuponesDiasHabiles.obtenerProximoDiaHabil(fechaPago, feriados);
         }
         
-        // Calcular fecha fin devengamiento basado en fecha de pago programada
-        // fechaFinDev = fechaPago + diasRestarFechaFinDev
+        // Calcular fecha fin devengamiento
         let fechaFinDev = window.cuponesCalculoCupones.calcularFechaFinDev(
             fechaPago,
             datos.fechaPrimeraRenta,
@@ -340,15 +414,10 @@ async function crearFilasCupones() {
             datos.diasRestarFechaFinDev
         );
         
-        // Normalizar fechas para comparación (solo año, mes, día)
-        const normalizarFecha = (fecha) => {
-            return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-        };
-        
         // Calcular fecha inicio
         let fechaInicio;
-        if (esPrimerCupon) {
-            // Para el primer cupón, la fecha inicio SIEMPRE es la fecha de emisión
+        if (esPrimerCuponBonoActual) {
+            // Solo si es el primer cupón del bono (número 1), usar fecha de emisión como fecha inicio
             fechaInicio = new Date(fechaEmisionDate);
             
             // Calcular fechaFinDev: debe ser fechaPago + diasRestarFechaFinDev, pero debe ser >= fechaInicio
@@ -358,32 +427,41 @@ async function crearFilasCupones() {
             const fechaFinDevCalculadaNormalizada = normalizarFecha(fechaFinDevCalculada);
             const fechaInicioNormalizada = normalizarFecha(fechaInicio);
             
-            // Si fechaFinDev calculada es >= fechaInicio, usarla
-            // Si no, usar fechaInicio como mínimo (el cupón no puede tener fechaFinDev < fechaInicio)
             if (fechaFinDevCalculadaNormalizada >= fechaInicioNormalizada) {
                 fechaFinDev = fechaFinDevCalculada;
             } else {
-                // Si fechaFinDev sería anterior a fechaInicio, usar fechaInicio
-                // Esto puede pasar si diasRestarFechaFinDev es muy negativo
                 fechaFinDev = new Date(fechaInicio);
             }
         } else {
-            // Para cupones siguientes, fecha inicio = fecha fin dev del cupón anterior + 1 día corrido
+            // Para cupones siguientes (incluyendo el primer cupón del cashflow si no es el cupón 1 del bono)
+            // fecha inicio = fecha fin dev del cupón anterior + 1 día corrido
             if (fechaFinDevAnterior) {
                 fechaInicio = new Date(fechaFinDevAnterior);
                 fechaInicio.setDate(fechaInicio.getDate() + 1); // +1 día corrido
             } else {
-                // Fallback: usar fecha fin dev + 1 del cupón actual (no debería llegar aquí)
-                fechaInicio = window.cuponesCalculoCupones.calcularFechaInicio(fechaFinDev);
+                // Fallback: calcular desde el cupón anterior del bono
+                const indiceCuponAnterior = cuponesDelBono.findIndex(c => c.numeroCupon === numeroCupon - 1);
+                if (indiceCuponAnterior !== -1) {
+                    const cuponAnteriorBono = cuponesDelBono[indiceCuponAnterior];
+                    const fechaFinDevAnteriorBono = window.cuponesCalculoCupones.calcularFechaFinDev(
+                        cuponAnteriorBono.fechaPago,
+                        datos.fechaPrimeraRenta,
+                        datos.periodicidad,
+                        datos.diasRestarFechaFinDev
+                    );
+                    fechaInicio = new Date(fechaFinDevAnteriorBono);
+                    fechaInicio.setDate(fechaInicio.getDate() + 1); // +1 día corrido
+                } else {
+                    // Último fallback: usar fecha fin dev + 1 del cupón actual
+                    fechaInicio = window.cuponesCalculoCupones.calcularFechaInicio(fechaFinDev);
+                }
             }
         }
         
         // Guardar fechaFinDev ANTES de cualquier ajuste para el siguiente cupón
-        // Esto asegura que el siguiente cupón tenga la fecha inicio correcta
         fechaFinDevAnterior = new Date(fechaFinDev);
         
         // Calcular inicio intervalo (fecha inicio + intervaloInicio en días hábiles)
-        // Usar feriados ya cargados en memoria
         let inicioIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
             fechaInicio,
             datos.intervaloInicio,
@@ -394,18 +472,14 @@ async function crearFilasCupones() {
         const formulaSelect = document.getElementById('formula');
         const formula = formulaSelect?.value || 'promedio-aritmetico';
         
-        // Calcular final intervalo (solo si no es "Promedio N tasas")
+        // Calcular final intervalo
         let finalIntervalo = null;
         if (formula !== 'promedio-n-tasas') {
             // IMPORTANTE: Para calculadoras CON ajuste CER, SIEMPRE usar fechaLiquidacion como base
             // Para calculadoras SIN ajuste CER, usar fechaFinDev como base
             const ajusteCER = datos.ajusteCER || false;
-            
-            // Para calculadoras CON ajuste CER: fechaBaseFinalIntervalo = fechaLiquidacion
-            // Para calculadoras SIN ajuste CER: fechaBaseFinalIntervalo = fechaFinDev
             const fechaBaseFinalIntervalo = ajusteCER ? fechaLiquidacion : fechaFinDev;
             
-            // Usar feriados ya cargados en memoria
             finalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
                 fechaBaseFinalIntervalo,
                 datos.intervaloFin,
@@ -415,95 +489,72 @@ async function crearFilasCupones() {
         
         // Validación: si hay fecha valuación y las fechas de intervalo son mayores, ajustar
         // SOLO para calculadoras con ajuste CER y solo si no es "Promedio N tasas"
-        if (formula !== 'promedio-n-tasas') {
-            const ajusteCER = datos.ajusteCER || false;
-            if (ajusteCER && datos.fechaValuacion) {
-                const fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(datos.fechaValuacion));
-                if (fechaValuacionDate) {
-                    // Si inicioIntervalo es mayor a fecha valuación, usar fecha valuación + intervaloInicio
-                    if (inicioIntervalo > fechaValuacionDate) {
-                        inicioIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
-                            fechaValuacionDate,
-                            datos.intervaloInicio,
-                            feriados
-                        );
-                    }
-                    
-                    // Si finalIntervalo es mayor a fecha valuación, usar fecha valuación + intervaloFin
-                    // PERO solo si la fecha base original (fechaLiquidacion) es mayor a fecha valuación
-                    if (finalIntervalo && finalIntervalo > fechaValuacionDate && fechaLiquidacion > fechaValuacionDate) {
-                        finalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
-                            fechaValuacionDate,
-                            datos.intervaloFin,
-                            feriados
-                        );
-                    }
+        if (datos.ajusteCER && datos.fechaValuacion && formula !== 'promedio-n-tasas') {
+            const fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(datos.fechaValuacion));
+            if (fechaValuacionDate) {
+                if (inicioIntervalo > fechaValuacionDate) {
+                    inicioIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(fechaValuacionDate, datos.intervaloInicio, feriados);
+                }
+                if (finalIntervalo && finalIntervalo > fechaValuacionDate) {
+                    finalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(fechaValuacionDate, datos.intervaloFin, feriados);
                 }
             }
         }
         
         // Buscar valores CER para inicio y final intervalo
-        // Usar valores CER ya cargados en memoria
         const valorCERInicio = window.cuponesCER.buscarValorCERPorFecha(inicioIntervalo, valoresCER);
         const valorCERFinal = finalIntervalo ? window.cuponesCER.buscarValorCERPorFecha(finalIntervalo, valoresCER) : null;
+        
+        // Obtener tipoInteresDias del formulario
+        const tipoInteresDias = document.getElementById('tipoInteresDias')?.value || '0';
+        
+        // Calcular dayCountFactor
+        const dayCountFactor = window.cuponesDayCountFactor?.calcularDayCountFactor(
+            fechaInicio,
+            fechaFinDev,
+            tipoInteresDias
+        ) || null;
         
         // Convertir fechas a formato DD/MM/AAAA para mostrar
         const fechaInicioStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaInicio), '/');
         const fechaFinDevStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaFinDev), '/');
         const fechaLiquidacionStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaLiquidacion), '/');
-        const fechaPagoStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(fechaPago), '/');
         const inicioIntervaloStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(inicioIntervalo), '/');
         const finalIntervaloStr = finalIntervalo ? convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(finalIntervalo), '/') : '';
         
-        // Formatear valores CER (4 decimales, usar punto como separador decimal para inputs HTML)
-        // Los inputs HTML type="number" requieren punto, no coma
-        const valorCERInicioStr = valorCERInicio !== null ? valorCERInicio.toFixed(4) : '';
-        const valorCERFinalStr = valorCERFinal !== null ? valorCERFinal.toFixed(4) : '';
-        
-        // Calcular Day Count Factor
-        // Obtener tipoInteresDias del formulario
-        const tipoInteresDias = document.getElementById('tipoInteresDias')?.value || '0';
-        const dayCountFactor = window.cuponesDayCountFactor?.calcularDayCountFactor(
-            fechaInicio,
-            fechaFinDev,
-            tipoInteresDias
-        );
-        const dayCountFactorStr = (dayCountFactor !== null && !isNaN(dayCountFactor)) 
-            ? dayCountFactor.toFixed(8) 
-            : '';
-        
-        cupones.push({
-            id: `cupon-${contadorCupon}`,
-            cupon: contadorCupon,
+        // Crear objeto cupón
+        const cupon = {
+            id: `cupon-${i + 1}`,
+            numeroCupon: numeroCupon.toString(),
             fechaInicio: fechaInicioStr,
             fechaFinDev: fechaFinDevStr,
             fechaLiquid: fechaLiquidacionStr,
-            fechaPago: fechaPagoStr,
             inicioIntervalo: inicioIntervaloStr,
             finalIntervalo: finalIntervaloStr,
-            valorCERInicio: valorCERInicioStr,
-            valorCERFinal: valorCERFinalStr,
-            dayCountFactor: dayCountFactorStr,
-            amortiz: '',
+            valorCERInicio: valorCERInicio || '',
+            valorCERFinal: valorCERFinal || '',
+            promedioTasa: '',
+            dayCountFactor: (dayCountFactor !== null && !isNaN(dayCountFactor)) ? dayCountFactor.toString() : '',
+            amortizacion: '',
             valorResidual: '',
-            amortizAjustada: '',
+            amortizacionAjustada: '',
             rentaNominal: '',
             rentaTNA: '',
             rentaAjustada: '',
-            factorActualiz: '',
-            pagosActualiz: '',
+            factorActualizacion: '',
+            pagosActualizados: '',
             flujos: '',
             flujosDesc: ''
-        });
+        };
         
-        contadorCupon++;
+        cupones.push(cupon);
     }
     
     return cupones;
 }
 
 /**
- * Autocompletar tabla de cupones (primera etapa)
+ * Autocompletar tabla de cupones (función principal)
  */
 async function autocompletarCupones() {
     try {
@@ -514,12 +565,7 @@ async function autocompletarCupones() {
         }
         
         if (typeof window.cuponesModule.setCuponesData !== 'function') {
-            console.error('[autocompletarCupones] setCuponesData no es una función', {
-                cuponesModule: window.cuponesModule,
-                setCuponesData: window.cuponesModule.setCuponesData,
-                typeofSetCuponesData: typeof window.cuponesModule.setCuponesData,
-                keys: Object.keys(window.cuponesModule)
-            });
+            console.error('[autocompletarCupones] setCuponesData no es una función');
             throw new Error('window.cuponesModule.setCuponesData no está definido');
         }
         
@@ -527,6 +573,7 @@ async function autocompletarCupones() {
         const camposObligatorios = [
             { id: 'ticker', nombre: 'Ticker' },
             { id: 'fechaEmision', nombre: 'Fecha Emisión' },
+            { id: 'fechaPrimerPago', nombre: 'Fecha Primer Pago' },
             { id: 'fechaPrimeraRenta', nombre: 'Dia de Pago' },
             { id: 'diasRestarFechaFinDev', nombre: 'Fin Dev.' },
             { id: 'fechaAmortizacion', nombre: 'Fecha Amortización' },
@@ -568,7 +615,7 @@ async function autocompletarCupones() {
         });
         
         if (camposFaltantes.length > 0) {
-            const mensaje = `Por favor complete los siguientes campos obligatorios:\n${camposFaltantes.join('\n')}`;
+            const mensaje = `Por favor complete los siguientes campos: ${camposFaltantes.join(', ')}`;
             if (typeof showError === 'function') {
                 showError(mensaje);
             } else {
@@ -577,68 +624,52 @@ async function autocompletarCupones() {
             return;
         }
         
-        // Limpiar cupones existentes
-        window.cuponesModule.setCuponesData([]);
-        
         // Crear fila de inversión
-        const filaInversion = await crearFilaInversion();
+        const inversion = await crearFilaInversion();
+        if (!inversion) {
+            console.error('[autocompletarCupones] No se pudo crear la fila de inversión');
+            return;
+        }
         
         // Crear filas de cupones
-        const filasCupones = await crearFilasCupones();
-        
-        // Combinar todas las filas
-        const todasLasFilas = [];
-        if (filaInversion) {
-            todasLasFilas.push(filaInversion);
-        }
-        todasLasFilas.push(...filasCupones);
-        
-        // Aplicar valores financieros (renta TNA y amortizaciones) antes de renderizar
-        if (window.cuponesCalculos && window.cuponesCalculos.aplicarValoresFinancieros) {
-            window.cuponesCalculos.aplicarValoresFinancieros(todasLasFilas);
-        }
-        
-        // Actualizar datos y renderizar
-        window.cuponesModule.setCuponesData(todasLasFilas);
-
-        if (window.tirModule && typeof window.tirModule.resetTIR === 'function') {
-            window.tirModule.resetTIR();
-        }
-        
-        // Mostrar la tabla si hay datos
-        const tablaContainer = document.getElementById('tablaCuponesContainer');
-        if (tablaContainer && todasLasFilas.length > 0) {
-            tablaContainer.style.display = 'block';
-        }
-        
-        // Actualizar CER de valuación, coeficientes y visibilidad después de cargar los cupones
-        // Solo si la calculadora tiene ajuste CER activado
-        setTimeout(async () => {
-            const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
-            
-            if (ajusteCER) {
-                if (window.actualizarCERValuacion) {
-                    await window.actualizarCERValuacion();
-                }
-                if (window.actualizarCoeficientesCER) {
-                    await window.actualizarCoeficientesCER();
-                }
+        const cupones = await crearFilasCupones();
+        if (!cupones || cupones.length === 0) {
+            if (typeof showError === 'function') {
+                showError('No se pudieron generar los cupones. Verifique los datos ingresados.');
+            } else {
+                alert('No se pudieron generar los cupones. Verifique los datos ingresados.');
             }
-            
-            // Actualizar visibilidad siempre (para mostrar/ocultar columnas según ajusteCER)
-            if (window.actualizarVisibilidadCoeficientesCER) {
-                window.actualizarVisibilidadCoeficientesCER();
-            }
-        }, 200);
+            return;
+        }
+        
+        // Combinar inversión y cupones
+        const todosLosCupones = [inversion, ...cupones];
+        
+        // Establecer los datos en el módulo
+        window.cuponesModule.setCuponesData(todosLosCupones);
+        
+        // Mostrar la tabla
+        const container = document.getElementById('tablaCuponesContainer');
+        if (container) {
+            container.style.display = 'block';
+        }
+        
+        // Renderizar los cupones
+        if (typeof window.cuponesModule.renderizarCupones === 'function') {
+            await window.cuponesModule.renderizarCupones();
+        }
+        
+        console.log('[autocompletarCupones] Cupones creados exitosamente:', todosLosCupones.length);
         
     } catch (error) {
-        console.error('Error al autocompletar cupones:', error);
+        console.error('[autocompletarCupones] Error:', error);
         if (typeof showError === 'function') {
-            showError('Error al autocompletar cupones: ' + error.message);
+            showError(`Error al autocompletar cupones: ${error.message}`);
+        } else {
+            alert(`Error al autocompletar cupones: ${error.message}`);
         }
     }
 }
 
-// Exportar funciones
+// Exportar función a window para acceso global
 window.autocompletarCupones = autocompletarCupones;
-

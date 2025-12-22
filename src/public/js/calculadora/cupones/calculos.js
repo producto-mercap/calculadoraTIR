@@ -152,17 +152,7 @@ function normalizarNumeroDesdeTexto(texto) {
     return normalizarNumeroDesdeInput(texto.replace(',', '.').trim());
 }
 
-function obtenerDecimalesAjustes() {
-    // Usar la función global si está disponible, sino usar implementación local
-    if (typeof window.obtenerDecimalesAjustes === 'function') {
-        return window.obtenerDecimalesAjustes();
-    }
-    const input = document.getElementById('decimalesAjustes');
-    if (!input) return 8; // Default: 8 decimales
-    const valor = parseInt(input.value, 10);
-    if (isNaN(valor) || valor < 0 || valor > 12) return 8;
-    return valor;
-}
+// Función obtenerDecimalesAjustes ya está definida arriba (línea 57), no duplicar
 
 function obtenerDecimalesRentaTNA() {
     const input = document.getElementById('decimalesRentaTNA');
