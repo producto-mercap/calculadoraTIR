@@ -495,30 +495,69 @@ function cerrarModalCalculadoras() {
 }
 
 /**
+ * Limpiar todos los datos de la calculadora anterior
+ */
+function limpiarCalculadoraAnterior() {
+    // Limpiar cupones
+    if (window.cuponesModule && window.cuponesModule.setCuponesData) {
+        window.cuponesModule.setCuponesData([]);
+    }
+    
+    // Limpiar TIR y resultados
+    if (window.tirModule && typeof window.tirModule.resetTIR === 'function') {
+        window.tirModule.resetTIR();
+    }
+    
+    // Limpiar coeficientes CER
+    const coefCEREmisionSpan = document.getElementById('coefCEREmision');
+    const coefCERCompraSpan = document.getElementById('coefCERCompra');
+    const cerEmisionValorSpan = document.getElementById('valorCEREmision');
+    const cerCompraValorSpan = document.getElementById('valorCERCompra');
+    const cerValuacionInput = document.getElementById('cerValuacion');
+    
+    if (coefCEREmisionSpan) coefCEREmisionSpan.textContent = '-';
+    if (coefCERCompraSpan) coefCERCompraSpan.textContent = '-';
+    if (cerEmisionValorSpan) cerEmisionValorSpan.textContent = '-';
+    if (cerCompraValorSpan) cerCompraValorSpan.textContent = '-';
+    if (cerValuacionInput) cerValuacionInput.value = '';
+    
+    // Limpiar precios
+    const preciosIds = ['precioCT', 'precioCTHoyAjustado', 'pagosEfectActualizados', 'precioCTAjustPagos', 'precioTecnicoVencimiento'];
+    preciosIds.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.textContent = '-';
+    });
+    
+    // Ocultar tabla de cupones
+    const tablaCuponesContainer = document.getElementById('tablaCuponesContainer');
+    if (tablaCuponesContainer) {
+        tablaCuponesContainer.style.display = 'none';
+    }
+    
+    // Ocultar panel de resultados
+    const panelResultados = document.getElementById('panelResultados');
+    if (panelResultados) {
+        panelResultados.style.display = 'none';
+    }
+    
+    // Limpiar sessionStorage de cupones
+    if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('cuponesData');
+        sessionStorage.removeItem('tablaCuponesVisible');
+    }
+}
+
+/**
  * Seleccionar y cargar una calculadora
  */
 async function seleccionarCalculadora(id) {
     try {
+        // Limpiar todos los datos de la calculadora anterior
+        limpiarCalculadoraAnterior();
+        
         const cache = calculadorasDetalleCache.get(id);
         const ahora = Date.now();
         if (cache && (ahora - cache.time) < CALCULADORAS_CACHE_MS) {
-            // Ocultar tabla de cupones existente al cargar nueva calculadora
-            const tablaCuponesContainer = document.getElementById('tablaCuponesContainer');
-            if (tablaCuponesContainer) {
-                tablaCuponesContainer.style.display = 'none';
-                
-                // Ocultar panel de resultados
-                const panelResultados = document.getElementById('panelResultados');
-                if (panelResultados) {
-                    panelResultados.style.display = 'none';
-                }
-            }
-            
-            // Limpiar cupones existentes
-            if (window.cuponesModule && window.cuponesModule.setCuponesData) {
-                window.cuponesModule.setCuponesData([]);
-            }
-            
             aplicarCalculadoraEnFormulario(cache.data);
             cerrarModalCalculadoras();
             showSuccess('Calculadora cargada exitosamente');
@@ -535,23 +574,6 @@ async function seleccionarCalculadora(id) {
 
         const calculadora = result.calculadora;
         calculadorasDetalleCache.set(id, { data: calculadora, time: Date.now() });
-        
-        // Ocultar tabla de cupones existente al cargar nueva calculadora
-        const tablaCuponesContainer = document.getElementById('tablaCuponesContainer');
-        if (tablaCuponesContainer) {
-            tablaCuponesContainer.style.display = 'none';
-        }
-        
-        // Ocultar panel de resultados
-        const panelResultados = document.getElementById('panelResultados');
-        if (panelResultados) {
-            panelResultados.style.display = 'none';
-        }
-        
-        // Limpiar cupones existentes
-        if (window.cuponesModule && window.cuponesModule.setCuponesData) {
-            window.cuponesModule.setCuponesData([]);
-        }
         
         aplicarCalculadoraEnFormulario(calculadora);
         cerrarModalCalculadoras();
