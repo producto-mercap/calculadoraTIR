@@ -767,6 +767,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const actualizarYRefrescar = async () => {
             const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
             
+            // Para calculadoras SIN ajuste CER: recalcular intervalos del cupón vigente basándose en fecha de valuación
+            if (!ajusteCER && window.cuponesRecalculos && window.cuponesRecalculos.recalcularIntervalosCuponVigentePorFechaValuacion) {
+                await window.cuponesRecalculos.recalcularIntervalosCuponVigentePorFechaValuacion();
+            }
+            
             if (ajusteCER) {
                 if (window.actualizarCERValuacion) {
                     await window.actualizarCERValuacion();
@@ -776,7 +781,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            if (window.refrescarTablaCupones) {
+            // Para calculadoras SIN ajuste CER: renderizar completamente la tabla para recalcular promedios
+            // Para calculadoras CON ajuste CER: solo refrescar estilos y valores CER
+            if (!ajusteCER && window.cuponesModule && typeof window.cuponesModule.renderizarCupones === 'function') {
+                // Renderizar completamente la tabla para recalcular promedios de tasa con los nuevos intervalos
+                await window.cuponesModule.renderizarCupones();
+            } else if (ajusteCER && window.refrescarTablaCupones) {
+                // Para ajuste CER, solo refrescar estilos y valores CER
                 await window.refrescarTablaCupones();
             }
             

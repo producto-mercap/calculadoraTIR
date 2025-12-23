@@ -501,6 +501,141 @@ function recalcularDayCountFactor(cupon) {
     }
 }
 
+/**
+ * Recalcula los intervalos del cupón vigente basándose en la fecha de valuación
+ * Solo para calculadoras SIN ajuste CER
+ * El cupón vigente es aquel donde fechaValuacion está entre fechaInicio y fechaFinDev
+ */
+async function recalcularIntervalosCuponVigentePorFechaValuacion() {
+    const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
+    
+    // Solo aplicar para calculadoras sin ajuste CER
+    if (ajusteCER) {
+        return;
+    }
+    
+    const fechaValuacionStr = document.getElementById('fechaValuacion')?.value || '';
+    if (!fechaValuacionStr) {
+        return;
+    }
+    
+    // Limpiar caché de TAMAR/BADLAR para forzar recalculación con nuevos intervalos
+    if (window.cuponesCalculos) {
+        if (typeof window.cuponesCalculos.limpiarCacheTAMAR === 'function') {
+            window.cuponesCalculos.limpiarCacheTAMAR();
+        }
+        if (typeof window.cuponesCalculos.limpiarCacheBADLAR === 'function') {
+            window.cuponesCalculos.limpiarCacheBADLAR();
+        }
+    }
+    
+    try {
+        const fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+        if (!fechaValuacionDate) {
+            return;
+        }
+        
+        // Obtener cupones
+        const cupones = window.cuponesModule && window.cuponesModule.getCuponesData 
+            ? window.cuponesModule.getCuponesData() 
+            : [];
+        
+        if (!cupones || cupones.length === 0) {
+            return;
+        }
+        
+        // Identificar el cupón vigente
+        let cuponVigente = null;
+        for (const cupon of cupones) {
+            if (cupon.id === 'inversion') continue;
+            if (!cupon.fechaInicio || !cupon.fechaFinDev) continue;
+            
+            try {
+                const fechaInicioDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaInicio));
+                const fechaFinDevDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaFinDev));
+                
+                if (fechaInicioDate && fechaFinDevDate && 
+                    fechaValuacionDate >= fechaInicioDate && 
+                    fechaValuacionDate <= fechaFinDevDate) {
+                    cuponVigente = cupon;
+                    break;
+                }
+            } catch (e) {
+                // Ignorar errores de parsing
+            }
+        }
+        
+        if (!cuponVigente) {
+            return;
+        }
+        
+        // Obtener intervalos del formulario
+        const intervaloInicio = parseInt(document.getElementById('intervaloInicio')?.value || '0', 10);
+        const intervaloFin = parseInt(document.getElementById('intervaloFin')?.value || '0', 10);
+        
+        // Calcular rango de fechas para cargar feriados
+        const fechaDesdeDate = new Date(fechaValuacionDate);
+        const fechaHastaDate = new Date(fechaValuacionDate);
+        const margenDias = 60;
+        
+        // Ajustar según los intervalos
+        fechaDesdeDate.setDate(fechaDesdeDate.getDate() + Math.min(intervaloInicio, intervaloFin) - margenDias);
+        fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.max(intervaloInicio, intervaloFin) + margenDias);
+        
+        const fechaDesde = formatearFechaInput(fechaDesdeDate);
+        const fechaHasta = formatearFechaInput(fechaHastaDate);
+        
+        // Obtener o cargar feriados
+        let feriados = window.cuponesDiasHabiles.obtenerFeriados(fechaDesde, fechaHasta);
+        if (!feriados || feriados.length === 0) {
+            feriados = await window.cuponesDiasHabiles.cargarFeriadosDesdeBD(fechaDesde, fechaHasta);
+        }
+        
+        // Obtener fórmula seleccionada para determinar si se requiere finalIntervalo
+        const formulaSelect = document.getElementById('formula');
+        const formula = formulaSelect?.value || 'promedio-aritmetico';
+        const requiereFinalIntervalo = formula !== 'promedio-n-tasas';
+        
+        // Recalcular inicioIntervalo basado en fechaValuacion
+        const nuevoInicioIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
+            fechaValuacionDate, 
+            intervaloInicio, 
+            feriados
+        );
+        const inicioIntervaloStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(nuevoInicioIntervalo), '/');
+        cuponVigente.inicioIntervalo = inicioIntervaloStr;
+        
+        // Actualizar input en el DOM
+        const inputInicioIntervalo = document.getElementById(`inicioIntervalo_${cuponVigente.id}`);
+        if (inputInicioIntervalo) {
+            inputInicioIntervalo.value = inicioIntervaloStr;
+        }
+        
+        // Recalcular finalIntervalo solo si la fórmula lo requiere
+        if (requiereFinalIntervalo) {
+            // Para el cupón vigente, el rango de tamar debe variar según la fecha de valuación
+            // Usar fechaValuacion + intervaloFin como base para el cupón vigente
+            const nuevoFinalIntervalo = window.cuponesDiasHabiles.sumarDiasHabiles(
+                fechaValuacionDate, 
+                intervaloFin, 
+                feriados
+            );
+            
+            const finalIntervaloStr = convertirFechaYYYYMMDDaDDMMAAAA(formatearFechaInput(nuevoFinalIntervalo), '/');
+            cuponVigente.finalIntervalo = finalIntervaloStr;
+            
+            // Actualizar input en el DOM
+            const inputFinalIntervalo = document.getElementById(`finalIntervalo_${cuponVigente.id}`);
+            if (inputFinalIntervalo) {
+                inputFinalIntervalo.value = finalIntervaloStr;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error al recalcular intervalos del cupón vigente por fecha de valuación:', error);
+    }
+}
+
 // Exportar funciones globalmente
 window.cuponesRecalculos = {
     recalcularDependencias,
@@ -510,7 +645,8 @@ window.cuponesRecalculos = {
     recalcularFechaFinDev,
     recalcularValorCERInicio,
     recalcularValorCERFinal,
-    recalcularDayCountFactor
+    recalcularDayCountFactor,
+    recalcularIntervalosCuponVigentePorFechaValuacion
 };
 
 

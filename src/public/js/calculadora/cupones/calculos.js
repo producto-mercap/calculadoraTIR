@@ -440,22 +440,53 @@ async function calcularPromedioTAMARParaCupon(cupon) {
             const intervaloInicioInput = document.getElementById('intervaloInicio');
             const intervaloInicio = parseInt(intervaloInicioInput?.value || '0', 10);
             
-            // Convertir fecha inicio a Date
-            let fechaInicioStr = cupon.fechaInicio || cupon.inicioIntervalo;
-            if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaInicioStr)) {
-                fechaInicioStr = convertirFechaDDMMAAAAaYYYYMMDD(fechaInicioStr);
+            // Para "Promedio N tasas", usar inicioIntervalo si está disponible (especialmente para cupón vigente)
+            // Si inicioIntervalo está disponible, usarlo directamente (ya está calculado desde fechaValuacion para el cupón vigente)
+            // Si no, calcular desde fechaInicio + intervaloInicio
+            let fechaBaseDate = null;
+            
+            if (cupon.inicioIntervalo) {
+                // Usar inicioIntervalo directamente (ya está calculado correctamente)
+                let inicioIntervaloStr = cupon.inicioIntervalo;
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(inicioIntervaloStr)) {
+                    inicioIntervaloStr = convertirFechaDDMMAAAAaYYYYMMDD(inicioIntervaloStr);
+                }
+                fechaBaseDate = crearFechaDesdeString(inicioIntervaloStr);
             }
             
-            const fechaInicioDate = crearFechaDesdeString(fechaInicioStr);
-            if (!fechaInicioDate) {
+            // Si no se pudo obtener desde inicioIntervalo, calcular desde fechaInicio + intervaloInicio
+            if (!fechaBaseDate) {
+                let fechaInicioStr = cupon.fechaInicio;
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaInicioStr)) {
+                    fechaInicioStr = convertirFechaDDMMAAAAaYYYYMMDD(fechaInicioStr);
+                }
+                const fechaInicioDate = crearFechaDesdeString(fechaInicioStr);
+                if (!fechaInicioDate) {
+                    return null;
+                }
+                // Calcular fecha base = fechaInicio + intervaloInicio
+                const fechaDesde = formatearFechaInput(fechaInicioDate);
+                const fechaHastaDate = new Date(fechaInicioDate);
+                fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.abs(intervaloInicio) + 60);
+                const fechaHasta = formatearFechaInput(fechaHastaDate);
+                
+                let feriadosParaCalc = window.cuponesDiasHabiles?.obtenerFeriados?.(fechaDesde, fechaHasta);
+                if (!feriadosParaCalc || feriadosParaCalc.length === 0) {
+                    feriadosParaCalc = await window.cuponesDiasHabiles?.cargarFeriadosDesdeBD?.(fechaDesde, fechaHasta) || [];
+                }
+                
+                fechaBaseDate = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaInicioDate, intervaloInicio, feriadosParaCalc);
+            }
+            
+            if (!fechaBaseDate) {
                 return null;
             }
             
             // Calcular rango de fechas para cargar feriados (con margen)
-            const fechaDesdeDate = new Date(fechaInicioDate);
-            fechaDesdeDate.setDate(fechaDesdeDate.getDate() + intervaloInicio - cantidadTasas - 60); // Margen hacia atrás
-            const fechaHastaDate = new Date(fechaInicioDate);
-            fechaHastaDate.setDate(fechaHastaDate.getDate() + intervaloInicio + 60); // Margen hacia adelante
+            const fechaDesdeDate = new Date(fechaBaseDate);
+            fechaDesdeDate.setDate(fechaDesdeDate.getDate() - cantidadTasas - 60); // Margen hacia atrás
+            const fechaHastaDate = new Date(fechaBaseDate);
+            fechaHastaDate.setDate(fechaHastaDate.getDate() + 60); // Margen hacia adelante
             
             const fechaDesde = formatearFechaInput(fechaDesdeDate);
             const fechaHasta = formatearFechaInput(fechaHastaDate);
@@ -466,6 +497,28 @@ async function calcularPromedioTAMARParaCupon(cupon) {
                 feriados = await window.cuponesDiasHabiles?.cargarFeriadosDesdeBD?.(fechaDesde, fechaHasta) || [];
             }
             
+            // Verificar si es el cupón vigente para limitar fechas hasta fecha de valuación
+            const fechaValuacionStr = document.getElementById('fechaValuacion')?.value || '';
+            let fechaValuacionDate = null;
+            let esCuponVigente = false;
+            
+            if (fechaValuacionStr && cupon.fechaInicio && cupon.fechaFinDev) {
+                try {
+                    fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+                    if (fechaValuacionDate) {
+                        const fechaInicioDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaInicio));
+                        const fechaFinDevDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaFinDev));
+                        if (fechaInicioDate && fechaFinDevDate &&
+                            fechaValuacionDate >= fechaInicioDate && 
+                            fechaValuacionDate <= fechaFinDevDate) {
+                            esCuponVigente = true;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de parsing
+                }
+            }
+
             // Obtener valores TAMAR con caché
             const result = await obtenerTAMARConCache(fechaDesde, fechaHasta);
             
@@ -474,21 +527,29 @@ async function calcularPromedioTAMARParaCupon(cupon) {
             }
             
             // Calcular fechas objetivo usando días hábiles
-            // Primera fecha: fecha inicio + intervaloInicio (días hábiles)
-            // Segunda fecha: fecha inicio + intervaloInicio - 1 (días hábiles)
-            // Tercera fecha: fecha inicio + intervaloInicio - 2 (días hábiles)
+            // Primera fecha: fechaBase (que es fechaInicio + intervaloInicio o inicioIntervalo)
+            // Segunda fecha: fechaBase - 1 día hábil
+            // Tercera fecha: fechaBase - 2 días hábiles
             // etc.
             const fechasObjetivo = [];
             for (let i = 0; i < cantidadTasas; i++) {
-                const diasOffset = intervaloInicio - i;
-                const fechaObjetivo = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaInicioDate, diasOffset, feriados);
+                const diasOffset = -i; // Hacia atrás desde fechaBase
+                const fechaObjetivo = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaBaseDate, diasOffset, feriados);
                 if (fechaObjetivo) {
                     fechasObjetivo.push(formatearFechaInput(fechaObjetivo));
                 }
             }
             
             // Buscar valores para cada fecha objetivo
+            // Si es el cupón vigente, solo incluir fechas hasta la fecha de valuación
+            const fechaValuacionStrISO = esCuponVigente && fechaValuacionDate ? formatearFechaInput(fechaValuacionDate) : null;
+            
             for (const fechaObjetivo of fechasObjetivo) {
+                // Si es cupón vigente, filtrar fechas que no excedan la fecha de valuación
+                if (esCuponVigente && fechaValuacionStrISO && fechaObjetivo > fechaValuacionStrISO) {
+                    continue; // Saltar esta fecha si excede la fecha de valuación
+                }
+                
                 const valor = result.datos.find(item => {
                     const itemFecha = typeof item.fecha === 'string' && item.fecha.includes('T') 
                         ? item.fecha.split('T')[0] 
@@ -504,9 +565,17 @@ async function calcularPromedioTAMARParaCupon(cupon) {
                 }
             }
             
-            if (valores.length !== cantidadTasas) {
-                // No se encontraron todas las tasas necesarias
-                return null;
+            // Para el cupón vigente, aceptar si tenemos al menos una tasa (hasta la fecha de valuación)
+            // Para otros cupones, requerir todas las tasas
+            if (esCuponVigente) {
+                if (valores.length === 0) {
+                    return null;
+                }
+            } else {
+                if (valores.length !== cantidadTasas) {
+                    // No se encontraron todas las tasas necesarias
+                    return null;
+                }
             }
         } else {
             // Promedio Aritmético: calcular promedio entre inicio y final intervalo
@@ -525,6 +594,36 @@ async function calcularPromedioTAMARParaCupon(cupon) {
                 fechaHasta = convertirFechaDDMMAAAAaYYYYMMDD(fechaHasta);
             }
 
+            // Verificar si es el cupón vigente y limitar hasta fecha de valuación
+            const fechaValuacionStr = document.getElementById('fechaValuacion')?.value || '';
+            let fechaValuacionDate = null;
+            let esCuponVigente = false;
+            
+            if (fechaValuacionStr) {
+                try {
+                    fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+                    if (fechaValuacionDate && cupon.fechaInicio && cupon.fechaFinDev) {
+                        const fechaInicioDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaInicio));
+                        const fechaFinDevDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaFinDev));
+                        if (fechaInicioDate && fechaFinDevDate &&
+                            fechaValuacionDate >= fechaInicioDate && 
+                            fechaValuacionDate <= fechaFinDevDate) {
+                            esCuponVigente = true;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de parsing
+                }
+            }
+
+            // Si es el cupón vigente, limitar fechaHasta a la fecha de valuación
+            if (esCuponVigente && fechaValuacionDate) {
+                const fechaHastaDate = crearFechaDesdeString(fechaHasta);
+                if (fechaHastaDate && fechaHastaDate > fechaValuacionDate) {
+                    fechaHasta = formatearFechaInput(fechaValuacionDate);
+                }
+            }
+
             // Obtener valores TAMAR con caché
             const result = await obtenerTAMARConCache(fechaDesde, fechaHasta);
 
@@ -533,7 +632,19 @@ async function calcularPromedioTAMARParaCupon(cupon) {
             }
 
             // Calcular promedio aritmético
-            valores = result.datos.map(item => parseFloat(item.valor || 0)).filter(v => !isNaN(v) && v > 0);
+            // Si es el cupón vigente, filtrar valores hasta la fecha de valuación
+            let datosFiltrados = result.datos;
+            if (esCuponVigente && fechaValuacionDate) {
+                const fechaValuacionStrISO = formatearFechaInput(fechaValuacionDate);
+                datosFiltrados = result.datos.filter(item => {
+                    const itemFecha = typeof item.fecha === 'string' && item.fecha.includes('T') 
+                        ? item.fecha.split('T')[0] 
+                        : item.fecha;
+                    return itemFecha <= fechaValuacionStrISO;
+                });
+            }
+
+            valores = datosFiltrados.map(item => parseFloat(item.valor || 0)).filter(v => !isNaN(v) && v > 0);
         }
         
         if (valores.length === 0) {
@@ -624,22 +735,53 @@ async function calcularPromedioBADLARParaCupon(cupon) {
             const intervaloInicioInput = document.getElementById('intervaloInicio');
             const intervaloInicio = parseInt(intervaloInicioInput?.value || '0', 10);
             
-            // Convertir fecha inicio a Date
-            let fechaInicioStr = cupon.fechaInicio || cupon.inicioIntervalo;
-            if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaInicioStr)) {
-                fechaInicioStr = convertirFechaDDMMAAAAaYYYYMMDD(fechaInicioStr);
+            // Para "Promedio N tasas", usar inicioIntervalo si está disponible (especialmente para cupón vigente)
+            // Si inicioIntervalo está disponible, usarlo directamente (ya está calculado desde fechaValuacion para el cupón vigente)
+            // Si no, calcular desde fechaInicio + intervaloInicio
+            let fechaBaseDate = null;
+            
+            if (cupon.inicioIntervalo) {
+                // Usar inicioIntervalo directamente (ya está calculado correctamente)
+                let inicioIntervaloStr = cupon.inicioIntervalo;
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(inicioIntervaloStr)) {
+                    inicioIntervaloStr = convertirFechaDDMMAAAAaYYYYMMDD(inicioIntervaloStr);
+                }
+                fechaBaseDate = crearFechaDesdeString(inicioIntervaloStr);
             }
             
-            const fechaInicioDate = crearFechaDesdeString(fechaInicioStr);
-            if (!fechaInicioDate) {
+            // Si no se pudo obtener desde inicioIntervalo, calcular desde fechaInicio + intervaloInicio
+            if (!fechaBaseDate) {
+                let fechaInicioStr = cupon.fechaInicio;
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaInicioStr)) {
+                    fechaInicioStr = convertirFechaDDMMAAAAaYYYYMMDD(fechaInicioStr);
+                }
+                const fechaInicioDate = crearFechaDesdeString(fechaInicioStr);
+                if (!fechaInicioDate) {
+                    return null;
+                }
+                // Calcular fecha base = fechaInicio + intervaloInicio
+                const fechaDesde = formatearFechaInput(fechaInicioDate);
+                const fechaHastaDate = new Date(fechaInicioDate);
+                fechaHastaDate.setDate(fechaHastaDate.getDate() + Math.abs(intervaloInicio) + 60);
+                const fechaHasta = formatearFechaInput(fechaHastaDate);
+                
+                let feriadosParaCalc = window.cuponesDiasHabiles?.obtenerFeriados?.(fechaDesde, fechaHasta);
+                if (!feriadosParaCalc || feriadosParaCalc.length === 0) {
+                    feriadosParaCalc = await window.cuponesDiasHabiles?.cargarFeriadosDesdeBD?.(fechaDesde, fechaHasta) || [];
+                }
+                
+                fechaBaseDate = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaInicioDate, intervaloInicio, feriadosParaCalc);
+            }
+            
+            if (!fechaBaseDate) {
                 return null;
             }
             
             // Calcular rango de fechas para cargar feriados (con margen)
-            const fechaDesdeDate = new Date(fechaInicioDate);
-            fechaDesdeDate.setDate(fechaDesdeDate.getDate() + intervaloInicio - cantidadTasas - 60); // Margen hacia atrás
-            const fechaHastaDate = new Date(fechaInicioDate);
-            fechaHastaDate.setDate(fechaHastaDate.getDate() + intervaloInicio + 60); // Margen hacia adelante
+            const fechaDesdeDate = new Date(fechaBaseDate);
+            fechaDesdeDate.setDate(fechaDesdeDate.getDate() - cantidadTasas - 60); // Margen hacia atrás
+            const fechaHastaDate = new Date(fechaBaseDate);
+            fechaHastaDate.setDate(fechaHastaDate.getDate() + 60); // Margen hacia adelante
             
             const fechaDesde = formatearFechaInput(fechaDesdeDate);
             const fechaHasta = formatearFechaInput(fechaHastaDate);
@@ -650,6 +792,28 @@ async function calcularPromedioBADLARParaCupon(cupon) {
                 feriados = await window.cuponesDiasHabiles?.cargarFeriadosDesdeBD?.(fechaDesde, fechaHasta) || [];
             }
             
+            // Verificar si es el cupón vigente para limitar fechas hasta fecha de valuación
+            const fechaValuacionStr = document.getElementById('fechaValuacion')?.value || '';
+            let fechaValuacionDate = null;
+            let esCuponVigente = false;
+            
+            if (fechaValuacionStr && cupon.fechaInicio && cupon.fechaFinDev) {
+                try {
+                    fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+                    if (fechaValuacionDate) {
+                        const fechaInicioDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaInicio));
+                        const fechaFinDevDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaFinDev));
+                        if (fechaInicioDate && fechaFinDevDate &&
+                            fechaValuacionDate >= fechaInicioDate && 
+                            fechaValuacionDate <= fechaFinDevDate) {
+                            esCuponVigente = true;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de parsing
+                }
+            }
+
             // Obtener valores BADLAR con caché
             const result = await obtenerBADLARConCache(fechaDesde, fechaHasta);
             
@@ -658,21 +822,29 @@ async function calcularPromedioBADLARParaCupon(cupon) {
             }
             
             // Calcular fechas objetivo usando días hábiles
-            // Primera fecha: fecha inicio + intervaloInicio (días hábiles)
-            // Segunda fecha: fecha inicio + intervaloInicio - 1 (días hábiles)
-            // Tercera fecha: fecha inicio + intervaloInicio - 2 (días hábiles)
+            // Primera fecha: fechaBase (que es fechaInicio + intervaloInicio o inicioIntervalo)
+            // Segunda fecha: fechaBase - 1 día hábil
+            // Tercera fecha: fechaBase - 2 días hábiles
             // etc.
             const fechasObjetivo = [];
             for (let i = 0; i < cantidadTasas; i++) {
-                const diasOffset = intervaloInicio - i;
-                const fechaObjetivo = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaInicioDate, diasOffset, feriados);
+                const diasOffset = -i; // Hacia atrás desde fechaBase
+                const fechaObjetivo = window.cuponesDiasHabiles?.sumarDiasHabiles?.(fechaBaseDate, diasOffset, feriados);
                 if (fechaObjetivo) {
                     fechasObjetivo.push(formatearFechaInput(fechaObjetivo));
                 }
             }
             
             // Buscar valores para cada fecha objetivo
+            // Si es el cupón vigente, solo incluir fechas hasta la fecha de valuación
+            const fechaValuacionStrISO = esCuponVigente && fechaValuacionDate ? formatearFechaInput(fechaValuacionDate) : null;
+            
             for (const fechaObjetivo of fechasObjetivo) {
+                // Si es cupón vigente, filtrar fechas que no excedan la fecha de valuación
+                if (esCuponVigente && fechaValuacionStrISO && fechaObjetivo > fechaValuacionStrISO) {
+                    continue; // Saltar esta fecha si excede la fecha de valuación
+                }
+                
                 const valor = result.datos.find(item => {
                     const itemFecha = typeof item.fecha === 'string' && item.fecha.includes('T') 
                         ? item.fecha.split('T')[0] 
@@ -688,9 +860,17 @@ async function calcularPromedioBADLARParaCupon(cupon) {
                 }
             }
             
-            if (valores.length !== cantidadTasas) {
-                // No se encontraron todas las tasas necesarias
-                return null;
+            // Para el cupón vigente, aceptar si tenemos al menos una tasa (hasta la fecha de valuación)
+            // Para otros cupones, requerir todas las tasas
+            if (esCuponVigente) {
+                if (valores.length === 0) {
+                    return null;
+                }
+            } else {
+                if (valores.length !== cantidadTasas) {
+                    // No se encontraron todas las tasas necesarias
+                    return null;
+                }
             }
         } else {
             // Promedio Aritmético: calcular promedio entre inicio y final intervalo
@@ -709,6 +889,36 @@ async function calcularPromedioBADLARParaCupon(cupon) {
                 fechaHasta = convertirFechaDDMMAAAAaYYYYMMDD(fechaHasta);
             }
 
+            // Verificar si es el cupón vigente y limitar hasta fecha de valuación
+            const fechaValuacionStr = document.getElementById('fechaValuacion')?.value || '';
+            let fechaValuacionDate = null;
+            let esCuponVigente = false;
+            
+            if (fechaValuacionStr) {
+                try {
+                    fechaValuacionDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(fechaValuacionStr));
+                    if (fechaValuacionDate && cupon.fechaInicio && cupon.fechaFinDev) {
+                        const fechaInicioDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaInicio));
+                        const fechaFinDevDate = crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(cupon.fechaFinDev));
+                        if (fechaInicioDate && fechaFinDevDate &&
+                            fechaValuacionDate >= fechaInicioDate && 
+                            fechaValuacionDate <= fechaFinDevDate) {
+                            esCuponVigente = true;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de parsing
+                }
+            }
+
+            // Si es el cupón vigente, limitar fechaHasta a la fecha de valuación
+            if (esCuponVigente && fechaValuacionDate) {
+                const fechaHastaDate = crearFechaDesdeString(fechaHasta);
+                if (fechaHastaDate && fechaHastaDate > fechaValuacionDate) {
+                    fechaHasta = formatearFechaInput(fechaValuacionDate);
+                }
+            }
+
             // Obtener valores BADLAR con caché
             const result = await obtenerBADLARConCache(fechaDesde, fechaHasta);
 
@@ -717,7 +927,19 @@ async function calcularPromedioBADLARParaCupon(cupon) {
             }
 
             // Calcular promedio aritmético
-            valores = result.datos.map(item => parseFloat(item.valor || 0)).filter(v => !isNaN(v) && v > 0);
+            // Si es el cupón vigente, filtrar valores hasta la fecha de valuación
+            let datosFiltrados = result.datos;
+            if (esCuponVigente && fechaValuacionDate) {
+                const fechaValuacionStrISO = formatearFechaInput(fechaValuacionDate);
+                datosFiltrados = result.datos.filter(item => {
+                    const itemFecha = typeof item.fecha === 'string' && item.fecha.includes('T') 
+                        ? item.fecha.split('T')[0] 
+                        : item.fecha;
+                    return itemFecha <= fechaValuacionStrISO;
+                });
+            }
+
+            valores = datosFiltrados.map(item => parseFloat(item.valor || 0)).filter(v => !isNaN(v) && v > 0);
         }
         
         if (valores.length === 0) {
