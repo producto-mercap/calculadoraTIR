@@ -802,6 +802,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.actualizarVisibilidadCoeficientesCER) {
                 window.actualizarVisibilidadCoeficientesCER();
             }
+            
+            // Recalcular TIR automáticamente después de cambiar la fecha de valuación
+            // Solo si ya se había calculado previamente (hay cupones cargados)
+            if (window.cuponesModule && window.cuponesModule.getCuponesData) {
+                const cupones = window.cuponesModule.getCuponesData();
+                if (cupones && cupones.length > 0) {
+                    // Esperar un pequeño delay para asegurar que todos los recálculos estén completos
+                    setTimeout(async () => {
+                        if (typeof window.calcularTIR === 'function') {
+                            await window.calcularTIR();
+                        }
+                    }, 100);
+                }
+            }
         };
         
         // Listener para eventos de cambio (solo cuando el valor realmente cambia)
