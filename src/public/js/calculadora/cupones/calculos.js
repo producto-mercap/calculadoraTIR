@@ -171,7 +171,13 @@ function aplicarRentaTNAEnCupones(cupones, rentaTNA) {
     });
 }
 
-function aplicarAmortizacionEnCupones(cupones, porcentajeAmortizacion) {
+/**
+ * Aplica amortización en los cupones desde el último hacia atrás hasta completar el residual objetivo.
+ * @param {Array} cupones - Lista de cupones (puede incluir fila inversión)
+ * @param {string|number} porcentajeAmortizacion - Porcentaje por cupón (ej. 20)
+ * @param {number|null} residualInicial - Residual al inicio del primer cupón de la lista (ej. 60 cuando la partida cae en los últimos cupones). Si no se pasa, se usa 100.
+ */
+function aplicarAmortizacionEnCupones(cupones, porcentajeAmortizacion, residualInicial) {
     if (!Array.isArray(cupones) || cupones.length === 0) return;
     
     const porcentaje = normalizarNumeroDesdeInput(porcentajeAmortizacion);
@@ -185,7 +191,11 @@ function aplicarAmortizacionEnCupones(cupones, porcentajeAmortizacion) {
         return;
     }
     
-    let restante = 100;
+    // Si la partida cae en los últimos cupones, el primer cupón visible no parte de 100% sino del residual ya amortizado por cupones anteriores
+    const objetivo = (residualInicial != null && isFinite(residualInicial) && residualInicial >= 0)
+        ? Math.min(100, residualInicial)
+        : 100;
+    let restante = objetivo;
     for (let i = cuponesRegulares.length - 1; i >= 0 && restante > 0; i--) {
         const valor = Math.min(porcentaje, restante);
         actualizarCampoCupon(cuponesRegulares[i], 'amortiz', formatearNumero(valor, 4));
@@ -269,7 +279,18 @@ function recalcularValoresDerivados(cupones, opciones = {}) {
     const coeficienteCEREmision = ajusteCER ? (obtenerCoeficienteCEREmision() || 1) : 1;
     const decimalesAjustes = obtenerDecimalesAjustes();
     
-    let residual = 100;
+    const cuponesRegulares = cupones.filter(c => c && c.id !== 'inversion');
+    const porcentaje = normalizarNumeroDesdeInput(opciones.porcentajeAmortizacion ?? document.getElementById('porcentajeAmortizacion')?.value);
+    // Cuando la partida cae en los últimos cupones, el primer cupón visible no parte de 100% sino del residual ya amortizado.
+    // Si no nos pasan residualInicial, lo calculamos para que cualquier llamada (CER, storage, core) respete el valor correcto.
+    let residualInicial = (opciones.residualInicial != null && isFinite(opciones.residualInicial) && opciones.residualInicial >= 0)
+        ? Math.min(100, opciones.residualInicial)
+        : null;
+    if (residualInicial === null && porcentaje > 0 && cuponesRegulares.length > 0) {
+        residualInicial = calcularResidualInicialSiPartidaEnUltimosCupones(cuponesRegulares, porcentaje);
+    }
+    if (residualInicial === null) residualInicial = 100;
+    let residual = residualInicial;
     cupones.forEach((cupon, index) => {
         if (!cupon || cupon.id === 'inversion') {
             return;
@@ -322,6 +343,26 @@ function recalcularValoresDerivados(cupones, opciones = {}) {
     recalcularFlujosCupones(cupones);
 }
 
+/**
+ * Calcula el residual inicial del primer cupón cuando la partida cae en los últimos cupones (lista parcial).
+ * @param {Array} cuponesRegulares - Cupones sin la fila inversión
+ * @param {number} porcentaje - Porcentaje de amortización por cupón
+ * @returns {number|null} Residual inicial (ej. 60) o null si se usa 100
+ */
+function calcularResidualInicialSiPartidaEnUltimosCupones(cuponesRegulares, porcentaje) {
+    if (!Array.isArray(cuponesRegulares) || cuponesRegulares.length === 0 || !porcentaje || porcentaje <= 0) {
+        return null;
+    }
+    const primerCuponNumero = parseInt(cuponesRegulares[0].numeroCupon, 10) || 1;
+    const ultimoCuponNumero = parseInt(cuponesRegulares[cuponesRegulares.length - 1].numeroCupon, 10) || 1;
+    if (primerCuponNumero <= 1) return null;
+    const totalCuponesBono = ultimoCuponNumero;
+    const cuponesEnCola = Math.ceil(100 / porcentaje);
+    const inicioCola = Math.max(1, totalCuponesBono - cuponesEnCola + 1);
+    const cuponesAntesEnCola = Math.max(0, primerCuponNumero - inicioCola);
+    return 100 - cuponesAntesEnCola * porcentaje;
+}
+
 function aplicarValoresFinancierosEnCupones(cupones, opciones = {}) {
     if (!Array.isArray(cupones) || cupones.length === 0) {
         return;
@@ -329,6 +370,10 @@ function aplicarValoresFinancierosEnCupones(cupones, opciones = {}) {
     
     const debeActualizarAmortizacion = opciones.actualizarAmortizacion !== false;
     const debeActualizarRenta = opciones.actualizarRenta !== false;
+    const cuponesRegulares = cupones.filter(c => c && c.id !== 'inversion');
+    const porcentajeAmortizacion = opciones.porcentajeAmortizacion ?? document.getElementById('porcentajeAmortizacion')?.value ?? '';
+    const porcentaje = normalizarNumeroDesdeInput(porcentajeAmortizacion);
+    const residualInicial = opciones.residualInicial ?? (porcentaje > 0 ? calcularResidualInicialSiPartidaEnUltimosCupones(cuponesRegulares, porcentaje) : null);
     
     if (debeActualizarRenta) {
         const rentaTNA = opciones.rentaTNA ?? document.getElementById('rentaTNA')?.value ?? '';
@@ -336,11 +381,10 @@ function aplicarValoresFinancierosEnCupones(cupones, opciones = {}) {
     }
     
     if (debeActualizarAmortizacion) {
-        const porcentajeAmortizacion = opciones.porcentajeAmortizacion ?? document.getElementById('porcentajeAmortizacion')?.value ?? '';
-        aplicarAmortizacionEnCupones(cupones, porcentajeAmortizacion);
+        aplicarAmortizacionEnCupones(cupones, porcentajeAmortizacion, residualInicial);
     }
     
-    recalcularValoresDerivados(cupones, opciones);
+    recalcularValoresDerivados(cupones, { ...opciones, residualInicial: residualInicial ?? opciones.residualInicial });
     
     if (opciones.forceRender && window.cuponesModule && typeof window.cuponesModule.renderizarCupones === 'function') {
         window.cuponesModule.renderizarCupones();

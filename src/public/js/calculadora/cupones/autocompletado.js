@@ -649,17 +649,33 @@ async function autocompletarCupones() {
         // Establecer los datos en el módulo
         window.cuponesModule.setCuponesData(todosLosCupones);
         
-        // Aplicar amortización desde el último cupón hacia atrás hasta completar 100%
+        // Calcular residual inicial cuando la partida cae en los últimos cupones (no mostramos desde cupón 1)
         const porcentajeAmortizacion = document.getElementById('porcentajeAmortizacion')?.value || '';
+        let residualInicial = null;
+        if (porcentajeAmortizacion && cupones.length > 0) {
+            const porcentaje = parseFloat(String(porcentajeAmortizacion).replace(',', '.')) || 0;
+            if (porcentaje > 0) {
+                const primerCuponNumero = parseInt(cupones[0].numeroCupon, 10) || 1;
+                const ultimoCuponNumero = parseInt(cupones[cupones.length - 1].numeroCupon, 10) || 1;
+                const totalCuponesBono = ultimoCuponNumero;
+                const cuponesEnCola = Math.ceil(100 / porcentaje);
+                const inicioCola = Math.max(1, totalCuponesBono - cuponesEnCola + 1);
+                const cuponesAntesEnCola = Math.max(0, primerCuponNumero - inicioCola);
+                residualInicial = 100 - cuponesAntesEnCola * porcentaje;
+            }
+        }
+        
+        // Aplicar amortización desde el último cupón hacia atrás hasta completar el residual (100% o residualInicial si partida en últimos cupones)
         if (porcentajeAmortizacion && window.cuponesCalculos && typeof window.cuponesCalculos.aplicarAmortizacionEnCupones === 'function') {
-            window.cuponesCalculos.aplicarAmortizacionEnCupones(todosLosCupones, porcentajeAmortizacion);
+            window.cuponesCalculos.aplicarAmortizacionEnCupones(todosLosCupones, porcentajeAmortizacion, residualInicial);
         }
         
         // Aplicar valores financieros (renta TNA, recalcular valores derivados)
         if (window.cuponesCalculos && typeof window.cuponesCalculos.aplicarValoresFinancieros === 'function') {
             window.cuponesCalculos.aplicarValoresFinancieros(todosLosCupones, {
                 actualizarAmortizacion: false, // Ya se aplicó arriba
-                actualizarRenta: true
+                actualizarRenta: true,
+                residualInicial: residualInicial ?? undefined
             });
         }
         
