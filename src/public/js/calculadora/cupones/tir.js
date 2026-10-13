@@ -244,7 +244,8 @@ function resetearResultadoTIR() {
     if (panelResultados) {
         panelResultados.style.display = 'none';
     }
-    
+    window.desgloseModule?.ocultarDesglose?.();
+
     // Limpiar valores de precios
     const preciosIds = ['precioCT', 'precioCTHoyAjustado', 'pagosEfectActualizados', 'precioCTAjustPagos', 'precioTecnicoVencimiento'];
     preciosIds.forEach(id => {
@@ -372,6 +373,7 @@ async function calcularTIR() {
 
         const tir = calcularTIRLocal(flujos, fechas, fechaCompraISO);
         ultimaTIRCalculada = tir;
+        window.desgloseModule?.ocultarDesglose?.();
 
         const resultado = document.getElementById('resultadoTIR');
         if (resultado) {

@@ -439,14 +439,15 @@ async function obtenerTAMARConCache(fechaDesde, fechaHasta) {
         return cached.data;
     }
     
-    // Obtener valores TAMAR desde la API
-    const response = await fetch(`/api/tamar?desde=${fechaDesde}&hasta=${fechaHasta}`);
-    const result = await response.json();
-    
-    // Guardar en caché
-    tamarCache.set(cacheKey, { data: result, time: ahora });
-    
-    return result;
+    // Obtener valores TAMAR desde la API (se guarda la promesa para no duplicar consultas simultáneas)
+    const promesa = fetch(`/api/tamar?desde=${fechaDesde}&hasta=${fechaHasta}`).then(response => response.json());
+    tamarCache.set(cacheKey, { data: promesa, time: ahora });
+    try {
+        return await promesa;
+    } catch (error) {
+        tamarCache.delete(cacheKey);
+        throw error;
+    }
 }
 
 /**
@@ -724,24 +725,51 @@ const BADLAR_CACHE_MS = 5 * 60 * 1000; // 5 minutos de caché
 /**
  * Obtener datos BADLAR con caché
  */
+// Rango BADLAR precargado al cargar un bono (una sola consulta para todos los cupones)
+let badlarRangoPrecargado = null;
+
 async function obtenerBADLARConCache(fechaDesde, fechaHasta) {
     const cacheKey = `${fechaDesde}_${fechaHasta}`;
     const ahora = Date.now();
     
-    // Verificar caché
+    // Si el rango pedido está dentro del rango precargado, filtrar en memoria
+    if (badlarRangoPrecargado && (ahora - badlarRangoPrecargado.time) < BADLAR_CACHE_MS &&
+        fechaDesde >= badlarRangoPrecargado.desde && fechaHasta <= badlarRangoPrecargado.hasta) {
+        return {
+            success: true,
+            datos: badlarRangoPrecargado.datos.filter(item => {
+                const itemFecha = String(item.fecha).split('T')[0];
+                return itemFecha >= fechaDesde && itemFecha <= fechaHasta;
+            })
+        };
+    }
+    
+    // Verificar caché (se guarda la promesa para no duplicar consultas simultáneas)
     const cached = badlarCache.get(cacheKey);
     if (cached && (ahora - cached.time) < BADLAR_CACHE_MS) {
         return cached.data;
     }
     
     // Obtener valores BADLAR desde la API
+    const promesa = fetch(`/api/badlar/bd?desde=${fechaDesde}&hasta=${fechaHasta}`).then(response => response.json());
+    badlarCache.set(cacheKey, { data: promesa, time: ahora });
+    try {
+        return await promesa;
+    } catch (error) {
+        badlarCache.delete(cacheKey);
+        throw error;
+    }
+}
+
+/**
+ * Precargar BADLAR para todo el rango del bono (YYYY-MM-DD)
+ */
+async function precargarBADLARRango(fechaDesde, fechaHasta) {
     const response = await fetch(`/api/badlar/bd?desde=${fechaDesde}&hasta=${fechaHasta}`);
     const result = await response.json();
-    
-    // Guardar en caché
-    badlarCache.set(cacheKey, { data: result, time: ahora });
-    
-    return result;
+    if (result.success && Array.isArray(result.datos)) {
+        badlarRangoPrecargado = { desde: fechaDesde, hasta: fechaHasta, datos: result.datos, time: Date.now() };
+    }
 }
 
 /**
@@ -749,7 +777,10 @@ async function obtenerBADLARConCache(fechaDesde, fechaHasta) {
  */
 function limpiarCacheBADLAR() {
     badlarCache.clear();
+    badlarRangoPrecargado = null;
 }
+
+window.precargarBADLARRango = precargarBADLARRango;
 
 /**
  * Calcular promedio de BADLAR para un cupón entre inicio y final intervalo

@@ -820,3 +820,36 @@ select.input-sm {
     }
 }
 
+
+/* Desglose de devengamiento */
+#tablaDesglose tfoot .fila-total-desglose td {
+    background: rgba(30, 142, 62, 0.15);
+    font-weight: 600;
+    padding: 6px 4px;
+}
+
+.desglose-contabilizado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.desglose-contabilizado .contabilizado-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+    background: #f1f3f4;
+    border-radius: 4px;
+}
+
+.desglose-contabilizado .contabilizado-resultado {
+    background: rgba(30, 142, 62, 0.15);
+}
+
+.desglose-contabilizado .contabilizado-operador {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}

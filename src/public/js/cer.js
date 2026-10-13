@@ -191,11 +191,9 @@ async function cargarCER() {
                 if (resultBD.success && resultBD.datos && resultBD.datos.length > 0) {
                     generarTablaCER(resultBD.datos, false);
                     tableContainer.style.display = 'block';
-                    emptyState.style.display = 'none';
                     showSuccess(`Se guardaron ${resultGuardar.actualizados} registros de CER`);
                 } else {
                     tableContainer.style.display = 'none';
-                    emptyState.style.display = 'block';
                 }
             } else {
                 showError('Error al guardar datos: ' + (resultGuardar.error || 'Error desconocido'));
@@ -377,17 +375,8 @@ function abrirModalIntervalosCER() {
         const fechaDesdeInput = document.getElementById('fechaDesdeCER');
         const fechaHastaInput = document.getElementById('fechaHastaCER');
         
-        // Establecer fecha de hoy por defecto
-        const hoy = new Date();
-        const fechaHoyStr = convertirFechaYYYYMMDDaDDMMAAAA_CER(formatearFechaInput(hoy));
-        
-        if (fechaDesdeInput) {
-            fechaDesdeInput.value = fechaHoyStr;
-        }
-        
-        if (fechaHastaInput) {
-            fechaHastaInput.value = fechaHoyStr;
-        }
+        // Rango por defecto: desde = hoy - 1 mes, hasta = hoy
+        aplicarRangoUltimoMes('fechaDesdeCER', 'fechaHastaCER');
     }
 }
 
@@ -719,3 +708,8 @@ async function cambiarPaginaCER(nuevaPagina) {
 }
 
 
+
+// Rango por defecto del buscador: desde = hoy - 1 mes, hasta = hoy (no pisa filtros ya aplicados)
+document.addEventListener('DOMContentLoaded', () => {
+    aplicarRangoUltimoMes('buscarDesdeCER', 'buscarHastaCER', '-', true);
+});

@@ -133,8 +133,16 @@
                 <!-- Panel de Resultados (oculto inicialmente, se muestra después de calcular TIR) -->
                 <div id="panelResultados" style="display: none; margin-top: 24px; margin-bottom: 24px;">
                     <div class="card">
-                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #1e8e3e;">Resultados</h3>
-                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="font-size: 18px; font-weight: 500; margin: 0; color: #1e8e3e;">Resultados</h3>
+                            <button class="btn btn-primary" id="btnVerDesglose" onclick="mostrarDesglose()" style="min-width: auto;" title="Ver el devengamiento diario desde la fecha de compra hasta la fecha de valuación">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+                                </svg>
+                                <span>Ver desglose</span>
+                            </button>
+                        </div>
+
                         <div style="display: flex; flex-wrap: nowrap; gap: 12px; overflow-x: auto;">
                             <div class="resultado-item-horizontal">
                                 <span class="resultado-label">Precio C+T</span>
@@ -161,6 +169,54 @@
                                 <span class="resultado-label">Precio Técnico Venc.</span>
                                 <span class="resultado-valor" id="precioTecnicoVencimiento">-</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de Desglose diario (oculto inicialmente, se muestra con "Ver desglose") -->
+                <div id="panelDesglose" style="display: none; margin-bottom: 24px;">
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="font-size: 18px; font-weight: 500; margin: 0; color: #1e8e3e;">Desglose de devengamiento</h3>
+                            <button class="btn btn-success" onclick="exportarDesgloseCSV()" style="min-width: auto;">
+                                <span>Exportar CSV</span>
+                            </button>
+                        </div>
+                        <div id="desgloseResumen" style="display: flex; flex-wrap: nowrap; gap: 12px; overflow-x: auto; margin-bottom: 16px;"></div>
+                        <div style="overflow-x: auto;">
+                            <table class="cupones-table" id="tablaDesglose">
+                                <thead id="desgloseHead"></thead>
+                                <tbody id="desgloseBody"></tbody>
+                                <tfoot id="desgloseFoot"></tfoot>
+                            </table>
+                        </div>
+                        <!-- Controles de paginación del desglose -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">
+                                <span id="desgloseInfoPagina">-</span>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn" onclick="cambiarPaginaDesglose(-1)" id="btnDesgloseAnterior">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                                    </svg>
+                                    <span>Anterior</span>
+                                </button>
+                                <div style="font-size: 14px; color: var(--text-primary); padding: 0 16px;">
+                                    <span id="desglosePagina">Página 1 de 1</span>
+                                </div>
+                                <button class="btn" onclick="cambiarPaginaDesglose(1)" id="btnDesgloseSiguiente">
+                                    <span>Siguiente</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Lo que efectivamente se contabiliza -->
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                            <h4 style="font-size: 14px; font-weight: 500; margin: 0 0 8px; color: var(--text-secondary);">Contabilización a la fecha de valuación</h4>
+                            <div id="desgloseContabilizado" class="desglose-contabilizado"></div>
                         </div>
                     </div>
                 </div>
@@ -388,6 +444,7 @@
     <script src="/js/calculadora/cupones/core.js"></script>
     <script src="/js/calculadora/cupones/calculoCupones.js"></script>
     <script src="/js/calculadora/precios.js"></script>
+    <script src="/js/calculadora/desglose.js"></script>
     <script src="/js/calculadora/cupones/autocompletado.js"></script>
     <script src="/js/calculadora/cupones/calculos.js"></script>
     <script src="/js/calculadora/cupones/tir.js"></script>

@@ -183,5 +183,35 @@ function formatearFechaMostrar(fechaString, separador = '/') {
     return `${day}${separador}${month}${separador}${year}`;
 }
 
+/**
+ * Rango por defecto para los filtros de fecha: desde = hoy - 1 mes, hasta = hoy
+ * @param {string} separador - Separador a usar ('-' por defecto)
+ * @returns {{desde: string, hasta: string}} Fechas en formato DD-MM-AAAA
+ */
+function obtenerRangoUltimoMes(separador = '-') {
+    const hoy = new Date();
+    // Si el día no existe en el mes anterior (ej: 31/03), usar el último día de ese mes
+    const ultimoDiaMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate();
+    const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, Math.min(hoy.getDate(), ultimoDiaMesAnterior));
+    const formatear = fecha => [
+        String(fecha.getDate()).padStart(2, '0'),
+        String(fecha.getMonth() + 1).padStart(2, '0'),
+        fecha.getFullYear()
+    ].join(separador);
+    return { desde: formatear(desde), hasta: formatear(hoy) };
+}
+
+/**
+ * Completar un par de inputs desde/hasta con el rango por defecto (hoy - 1 mes, hoy)
+ * @param {boolean} soloVacios - Si es true, no pisa inputs que ya tienen valor
+ */
+function aplicarRangoUltimoMes(idDesde, idHasta, separador = '-', soloVacios = false) {
+    const rango = obtenerRangoUltimoMes(separador);
+    const desdeInput = document.getElementById(idDesde);
+    const hastaInput = document.getElementById(idHasta);
+    if (desdeInput && (!soloVacios || !desdeInput.value)) desdeInput.value = rango.desde;
+    if (hastaInput && (!soloVacios || !hastaInput.value)) hastaInput.value = rango.hasta;
+}
+
 
 

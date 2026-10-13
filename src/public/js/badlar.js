@@ -201,17 +201,8 @@ function abrirModalIntervalosBADLAR() {
             aplicarMascaraFechaBADLAR(fechaHastaInput);
         }
         
-        // Establecer fecha de hoy por defecto
-        const hoy = new Date();
-        const fechaHoyStr = convertirFechaYYYYMMDDaDDMMAAAA_BADLAR(formatearFechaInput(hoy));
-        
-        if (fechaDesdeInput) {
-            fechaDesdeInput.value = fechaHoyStr;
-        }
-        
-        if (fechaHastaInput) {
-            fechaHastaInput.value = fechaHoyStr;
-        }
+        // Rango por defecto: desde = hoy - 1 mes, hasta = hoy
+        aplicarRangoUltimoMes('fechaDesdeBADLAR', 'fechaHastaBADLAR');
     }
 }
 
@@ -584,3 +575,8 @@ async function cambiarPaginaBADLAR(nuevaPagina) {
         showError('Error al cargar página: ' + error.message);
     }
 }
+
+// Rango por defecto del buscador: desde = hoy - 1 mes, hasta = hoy (no pisa filtros ya aplicados)
+document.addEventListener('DOMContentLoaded', () => {
+    aplicarRangoUltimoMes('buscarDesdeBADLAR', 'buscarHastaBADLAR', '-', true);
+});

@@ -702,7 +702,7 @@ async function autocompletarCupones() {
         const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
         if (ajusteCER) {
             // Esperar un pequeño delay para asegurar que el DOM esté completamente actualizado
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 0));
             
             if (window.actualizarCERValuacion && typeof window.actualizarCERValuacion === 'function') {
                 await window.actualizarCERValuacion();
@@ -714,6 +714,7 @@ async function autocompletarCupones() {
         }
         
         console.log('[autocompletarCupones] Cupones creados exitosamente:', todosLosCupones.length);
+        return true;
         
     } catch (error) {
         console.error('[autocompletarCupones] Error:', error);

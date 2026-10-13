@@ -236,21 +236,8 @@ window.abrirModalIntervalosFeriados = function() {
     if (modal) {
         modal.style.display = 'flex';
         
-        // Inicializar fechas si no tienen valor
-        const fechaDesdeInput = document.getElementById('fechaDesdeFeriados');
-        const fechaHastaInput = document.getElementById('fechaHastaFeriados');
-        
-        if (fechaDesdeInput && !fechaDesdeInput.value) {
-            const hoy = new Date();
-            const dia15 = new Date(hoy.getFullYear(), hoy.getMonth(), 15);
-            fechaDesdeInput.value = convertirFechaYYYYMMDDaDDMMAAAA_FERIADOS(formatearFechaInput(dia15));
-        }
-        
-        if (fechaHastaInput && !fechaHastaInput.value) {
-            const hoy = new Date();
-            const dia15Siguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 15);
-            fechaHastaInput.value = convertirFechaYYYYMMDDaDDMMAAAA_FERIADOS(formatearFechaInput(dia15Siguiente));
-        }
+        // Rango por defecto: desde = hoy - 1 mes, hasta = hoy
+        aplicarRangoUltimoMes('fechaDesdeFeriados', 'fechaHastaFeriados');
     }
 };
 
@@ -790,3 +777,8 @@ if (typeof window.abrirModalNuevoFeriado === 'undefined') {
     console.error('abrirModalNuevoFeriado no está definida');
 }
 
+
+// Rango por defecto del buscador: desde = hoy - 1 mes, hasta = hoy (no pisa filtros ya aplicados)
+document.addEventListener('DOMContentLoaded', () => {
+    aplicarRangoUltimoMes('buscarDesdeFeriados', 'buscarHastaFeriados', '-', true);
+});

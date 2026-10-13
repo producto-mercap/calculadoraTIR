@@ -78,10 +78,23 @@ async function cargarValoresCERDesdeBD(fechaDesde, fechaHasta) {
                 valor: parseFloat(cer.valor) || 0
             }));
             
-            // Actualizar cache
-            cerCache = valores;
-            cerCacheFecha = { desde: desdeFormateado, hasta: hastaFormateado };
-            
+            // Actualizar cache: combinar con el existente si los rangos se solapan,
+            // para no perder un rango amplio ya cargado al pedir uno más chico
+            const seSolapan = cerCache && cerCacheFecha &&
+                desdeFormateado <= cerCacheFecha.hasta && hastaFormateado >= cerCacheFecha.desde;
+            if (seSolapan) {
+                const porFecha = new Map(cerCache.map(cer => [cer.fecha, cer]));
+                valores.forEach(cer => porFecha.set(cer.fecha, cer));
+                cerCache = [...porFecha.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+                cerCacheFecha = {
+                    desde: desdeFormateado < cerCacheFecha.desde ? desdeFormateado : cerCacheFecha.desde,
+                    hasta: hastaFormateado > cerCacheFecha.hasta ? hastaFormateado : cerCacheFecha.hasta
+                };
+            } else {
+                cerCache = valores;
+                cerCacheFecha = { desde: desdeFormateado, hasta: hastaFormateado };
+            }
+
             return valores;
         }
         

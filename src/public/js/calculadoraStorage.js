@@ -450,7 +450,7 @@ function mostrarModalCalculadoras(calculadoras) {
     `;
 
     modalContent.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
             <h2 style="font-size: 20px; font-weight: 500; margin: 0;">Cargar Calculadora</h2>
             <button onclick="cerrarModalCalculadoras()" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -458,23 +458,61 @@ function mostrarModalCalculadoras(calculadoras) {
                 </svg>
             </button>
         </div>
-        <div id="listaCalculadoras" style="min-height: 200px;">
-            ${calculadoras.map(calc => `
-                <div style="padding: 16px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;" 
-                     onmouseover="this.style.background='#f1f3f4'" 
-                     onmouseout="this.style.background='white'"
-                     onclick="seleccionarCalculadora(${calc.id})">
-                    <div style="font-weight: 500; margin-bottom: 4px;">${calc.nombre}</div>
-                    <div style="font-size: 12px; color: var(--text-secondary);">
-                        Creada: ${new Date(calc.fecha_creacion).toLocaleString('es-AR')}
-                    </div>
-                </div>
-            `).join('')}
-        </div>
+        <input type="text" id="buscadorCalculadoras" class="input input-sm" placeholder="Buscar bono..." autocomplete="off" style="width: 100%; margin-bottom: 8px;" />
+        <div id="listaCalculadoras" style="min-height: 120px;"></div>
     `;
 
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
+
+    const buscador = modalContent.querySelector('#buscadorCalculadoras');
+    const lista = modalContent.querySelector('#listaCalculadoras');
+    const normalizar = texto => (texto || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const escaparHTML = texto => (texto || '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+    const renderizarLista = () => {
+        const filtro = normalizar(buscador.value.trim());
+        const filtradas = calculadoras.filter(calc => normalizar(calc.nombre).includes(filtro));
+        if (filtradas.length === 0) {
+            lista.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-secondary); font-size: 14px;">No se encontraron calculadoras</div>';
+            return;
+        }
+        lista.innerHTML = filtradas.map(calc => `
+            <div class="item-calculadora" data-calc-id="${calc.id}" style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;"
+                 onmouseover="this.style.background='#f1f3f4'"
+                 onmouseout="this.style.background='white'">
+                <span style="flex: 1; font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHTML(calc.nombre)}</span>
+                <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">${new Date(calc.fecha_creacion).toLocaleDateString('es-AR')}</span>
+                <button type="button" class="btn-eliminar-calculadora" title="Eliminar calculadora"
+                        style="background: none; border: none; cursor: pointer; padding: 4px; border-radius: 50%; color: #d93025; display: flex;"
+                        onmouseover="this.style.background='#fce8e6'" onmouseout="this.style.background='transparent'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    };
+
+    buscador.addEventListener('input', renderizarLista);
+    lista.addEventListener('click', async (e) => {
+        const item = e.target.closest('.item-calculadora');
+        if (!item) return;
+        const id = parseInt(item.dataset.calcId, 10);
+        if (e.target.closest('.btn-eliminar-calculadora')) {
+            const calc = calculadoras.find(c => c.id === id);
+            const eliminada = await eliminarCalculadoraDeLista(id, calc?.nombre || '');
+            if (eliminada) {
+                calculadoras = calculadoras.filter(c => c.id !== id);
+                renderizarLista();
+            }
+            return;
+        }
+        seleccionarCalculadora(id);
+    });
+
+    renderizarLista();
+    buscador.focus();
 
     // Cerrar al hacer clic fuera del modal
     modal.addEventListener('click', (e) => {
@@ -482,6 +520,37 @@ function mostrarModalCalculadoras(calculadoras) {
             cerrarModalCalculadoras();
         }
     });
+}
+
+/**
+ * Eliminar calculadora desde el modal de carga
+ * @returns {Promise<boolean>} true si se eliminó
+ */
+async function eliminarCalculadoraDeLista(id, nombre) {
+    if (!confirm(`¿Está seguro de que desea eliminar la calculadora "${nombre}"?`)) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(`/api/calculadoras/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.error || 'Error al eliminar calculadora');
+            return false;
+        }
+
+        showSuccess('Calculadora eliminada exitosamente');
+        if (calculadorasListaCache) {
+            calculadorasListaCache = calculadorasListaCache.filter(c => c.id !== id);
+        }
+        calculadorasDetalleCache.delete(id);
+        return true;
+    } catch (error) {
+        console.error('Error al eliminar calculadora:', error);
+        showError('Error al eliminar calculadora: ' + error.message);
+        return false;
+    }
 }
 
 /**
@@ -539,6 +608,7 @@ function limpiarCalculadoraAnterior() {
     if (panelResultados) {
         panelResultados.style.display = 'none';
     }
+    window.desgloseModule?.ocultarDesglose?.();
     
     // Limpiar sessionStorage de cupones
     if (typeof sessionStorage !== 'undefined') {
@@ -662,9 +732,13 @@ function aplicarCalculadoraEnFormulario(calculadora = {}) {
     }
     
     // Actualizar coeficientes CER después de cargar la estructura (solo si ajuste CER está activado)
-    // Usar setTimeout para asegurar que el DOM esté completamente actualizado
+    // setTimeout(0) solo cede el control para que el navegador pinte el formulario cargado
     setTimeout(async () => {
         const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
+        
+        // Precargar en paralelo feriados y CER de toda la vida del bono: los cálculos siguientes
+        // (CER valuación, coeficientes, cupones, TIR) se resuelven desde cache sin ir a la BD
+        await precargarDatosMercadoBono(ajusteCER);
         
         if (ajusteCER) {
             if (window.actualizarCERValuacion && typeof window.actualizarCERValuacion === 'function') {
@@ -675,7 +749,50 @@ function aplicarCalculadoraEnFormulario(calculadora = {}) {
                 await window.actualizarCoeficientesCER();
             }
         }
-    }, 300);
+        
+        // Generar cupones y calcular la TIR automáticamente al cargar el bono
+        if (typeof window.autocompletarCupones === 'function') {
+            const cuponesCargados = await window.autocompletarCupones();
+            if (cuponesCargados && typeof window.calcularTIR === 'function') {
+                await window.calcularTIR();
+            }
+        }
+    }, 0);
+}
+
+/**
+ * Precargar feriados (y CER si corresponde) para todo el rango del bono en una sola consulta cada uno
+ * Rango: desde la fecha más temprana (emisión/compra) hasta la más tardía (valuación/amortización), con margen
+ */
+async function precargarDatosMercadoBono(ajusteCER) {
+    const fechas = ['fechaEmision', 'fechaCompra', 'fechaValuacion', 'fechaAmortizacion']
+        .map(id => document.getElementById(id)?.value || '')
+        .filter(valor => /^\d{2}\/\d{2}\/\d{4}$/.test(valor))
+        .map(valor => crearFechaDesdeString(convertirFechaDDMMAAAAaYYYYMMDD(valor)))
+        .filter(Boolean);
+    if (fechas.length === 0) return;
+
+    const desde = new Date(Math.min(...fechas));
+    desde.setDate(desde.getDate() - 90); // margen para intervalos en días hábiles y búsquedas hacia atrás
+    const hasta = new Date(Math.max(...fechas));
+    hasta.setDate(hasta.getDate() + 60);
+    const desdeISO = formatearFechaInput(desde);
+    const hastaISO = formatearFechaInput(hasta);
+
+    // El CER se usa también en bonos sin ajuste (columnas CER de los cupones), por eso se precarga siempre
+    const cargas = [
+        window.cuponesDiasHabiles?.cargarFeriadosDesdeBD?.(desdeISO, hastaISO),
+        window.cuponesCER?.cargarValoresCERDesdeBD?.(desdeISO, hastaISO)
+    ];
+    if (document.getElementById('tasa')?.value === 'badlar' && typeof window.precargarBADLARRango === 'function') {
+        cargas.push(window.precargarBADLARRango(desdeISO, hastaISO));
+    }
+    try {
+        await Promise.all(cargas);
+    } catch (error) {
+        // Si falla la precarga, cada cálculo vuelve a consultar la BD por su cuenta
+        console.warn('[precargarDatosMercadoBono] No se pudo precargar datos:', error);
+    }
 }
 
 // Funciones relacionadas con CER movidas a calculadora/calculadoraCER.js
@@ -1112,7 +1229,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const cantidadTasasInputLocal = cantidadTasasInput || document.getElementById('cantidadTasas');
         
         // Si la tasa no es "Tasa fija", hacer el campo fórmula obligatorio
-        if (valorTasa && valorTasa !== 'tasa-fija' && valorTasa !== '') {
+        // (salvo con ajuste CER, donde la fórmula no aplica)
+        const ajusteCERActivo = document.getElementById('ajusteCER')?.checked || false;
+        if (valorTasa && valorTasa !== 'tasa-fija' && valorTasa !== '' && !ajusteCERActivo) {
             formulaSelect.required = true;
             formulaSelect.classList.remove('input-opcional');
             formulaSelect.classList.add('input');
@@ -1126,7 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formulaSelect.style.borderWidth = '';
             }
         } else {
-            // Si es "Tasa fija" o no hay tasa seleccionada, hacer el campo opcional
+            // Si es "Tasa fija", no hay tasa seleccionada o hay ajuste CER, hacer el campo opcional
             formulaSelect.required = false;
             formulaSelect.classList.remove('input');
             formulaSelect.classList.add('input-opcional');
@@ -1199,6 +1318,12 @@ document.addEventListener('DOMContentLoaded', () => {
             actualizarEstadoRentaTNA();
             actualizarEstadoFormula();
         }, 100);
+    }
+    
+    window.actualizarEstadoFormula = actualizarEstadoFormula;
+    
+    if (ajusteCERCheckbox) {
+        ajusteCERCheckbox.addEventListener('change', actualizarEstadoFormula);
     }
     
     if (formulaSelect) {

@@ -203,17 +203,8 @@ function abrirModalIntervalosTAMAR() {
         const fechaDesdeInput = document.getElementById('fechaDesdeTAMAR');
         const fechaHastaInput = document.getElementById('fechaHastaTAMAR');
         
-        // Establecer fecha de hoy por defecto
-        const hoy = new Date();
-        const fechaHoyStr = convertirFechaYYYYMMDDaDDMMAAAA_TAMAR(formatearFechaInput(hoy));
-        
-        if (fechaDesdeInput) {
-            fechaDesdeInput.value = fechaHoyStr;
-        }
-        
-        if (fechaHastaInput) {
-            fechaHastaInput.value = fechaHoyStr;
-        }
+        // Rango por defecto: desde = hoy - 1 mes, hasta = hoy
+        aplicarRangoUltimoMes('fechaDesdeTAMAR', 'fechaHastaTAMAR');
     }
 }
 
@@ -577,3 +568,8 @@ async function cambiarPaginaTAMAR(nuevaPagina) {
         showError('Error al cargar página: ' + error.message);
     }
 }
+
+// Rango por defecto del buscador: desde = hoy - 1 mes, hasta = hoy (no pisa filtros ya aplicados)
+document.addEventListener('DOMContentLoaded', () => {
+    aplicarRangoUltimoMes('buscarDesdeTAMAR', 'buscarHastaTAMAR', '-', true);
+});
