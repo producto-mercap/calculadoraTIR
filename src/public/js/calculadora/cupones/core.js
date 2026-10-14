@@ -362,6 +362,11 @@ async function renderizarCupones() {
         // Verificar si es el cupón vigente
         const esCuponVigente = !ajusteCER && cupon.id === cuponVigenteId;
         
+        // Fila de la inversión con fondo amarillo suave
+        if (cupon.id === 'inversion') {
+            row.classList.add('fila-inversion');
+        }
+        
         // Aplicar fondo celeste transparente al cupón vigente
         if (esCuponVigente) {
             row.style.backgroundColor = 'rgba(173, 212, 235, 0.15)';
@@ -380,9 +385,8 @@ async function renderizarCupones() {
         
         row.innerHTML = `
             <td>
-                <input type="text" class="input-table" value="${cupon.cupon || cupon.numeroCupon || ''}" 
-                       onchange="actualizarCupon('${cupon.id}', 'cupon', this.value)" 
-                       style="width: 35px; text-align: center;" />
+                <input type="text" class="input-table col-numero" value="${cupon.cupon || cupon.numeroCupon || ''}" 
+                       onchange="actualizarCupon('${cupon.id}', 'cupon', this.value)" />
             </td>
             <td>
                 <div style="position: relative;">
@@ -477,14 +481,14 @@ async function renderizarCupones() {
                        onchange="actualizarCupon('${cupon.id}', 'dayCountFactor', this.value)" />
             </td>
             <td>
-                <input type="number" class="input-table" 
+                <input type="number" class="input-table col-compacta" 
                        id="amortiz_${cupon.id}"
                        value="${cupon.amortiz || ''}" 
                        step="0.0001"
                        onchange="actualizarCupon('${cupon.id}', 'amortiz', this.value)" />
             </td>
             <td>
-                <input type="number" class="input-table" 
+                <input type="number" class="input-table col-compacta" 
                        id="valorResidual_${cupon.id}"
                        value="${cupon.valorResidual || ''}" 
                        step="0.0001"
@@ -498,14 +502,14 @@ async function renderizarCupones() {
                        onchange="actualizarCupon('${cupon.id}', 'amortizAjustada', this.value)" />
             </td>
             <td>
-                <input type="number" class="input-table" 
+                <input type="number" class="input-table col-compacta col-renta-nominal" 
                        id="rentaNominal_${cupon.id}"
                        value="${cupon.rentaNominal || ''}" 
                        step="${stepRentaNominal}"
                        onchange="actualizarCupon('${cupon.id}', 'rentaNominal', this.value)" />
             </td>
             <td>
-                <input type="number" class="input-table" 
+                <input type="number" class="input-table col-compacta" 
                        id="rentaTNA_${cupon.id}"
                        value="${cupon.rentaTNA || ''}" 
                        step="0.0001"

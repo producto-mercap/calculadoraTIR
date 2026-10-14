@@ -711,7 +711,34 @@ select.input-sm {
 }
 
 .cupones-table .input-table.date-input {
-    min-width: 90px;
+    min-width: 72px;
+}
+
+/* Columnas compactas: N°, Amortiz., Valor Residual, Renta Nominal, Renta TNA */
+.cupones-table .input-table.col-numero {
+    min-width: 22px;
+    padding: 4px 2px;
+}
+
+.cupones-table .input-table.col-compacta {
+    min-width: 44px;
+    padding: 4px 2px;
+}
+
+/* Renta Nominal puede tener 8 decimales (ej: 11.80931507) */
+.cupones-table .input-table.col-compacta.col-renta-nominal {
+    min-width: 64px;
+}
+
+.cupones-table td:has(> .col-numero),
+.cupones-table td:has(> .col-compacta) {
+    padding: 2px 1px;
+}
+
+/* Fila de la inversión */
+.cupones-table tr.fila-inversion td,
+.cupones-table tr.fila-inversion:hover td {
+    background-color: rgba(255, 224, 102, 0.25) !important;
 }
 
 .cupones-table .btn-icon {
