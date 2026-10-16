@@ -76,16 +76,28 @@ async function calcularDesglose() {
     const ajusteCER = document.getElementById('ajusteCER')?.checked || false;
     const intervaloFin = parseInt(document.getElementById('intervaloFin')?.value || '0', 10);
 
-    // Pagos de cupones (Pagos Actualiz. de la tabla de cupones)
+    // Pagos de cupones (Pagos Actualiz. de la tabla de cupones), aperturados en:
+    // - sinAjuste: flujo nominal (amortización + renta nominal × residual) × factor actualización → se descuenta del C+T
+    // - ajuste: Pagos Actualiz. - sinAjuste → se descuenta del ajuste CER (C+T Ajustado)
     const pagos = (window.cuponesModule?.getCuponesData?.() || [])
         .filter(c => c.id !== 'inversion' && c.fechaLiquid)
         .map(c => {
             const fechaISO = /^\d{2}\/\d{2}\/\d{4}$/.test(c.fechaLiquid)
                 ? convertirFechaDDMMAAAAaYYYYMMDD(c.fechaLiquid)
                 : c.fechaLiquid;
+            const monto = normalizarNumeroDesdeInput(c.pagosActualiz) || 0;
+            const amortiz = normalizarNumeroDesdeInput(c.amortiz) || 0;
+            const rentaNominal = normalizarNumeroDesdeInput(c.rentaNominal) || 0;
+            const residual = normalizarNumeroDesdeInput(c.valorResidual) ?? 100;
+            const factor = normalizarNumeroDesdeInput(c.factorActualiz) || 0;
+            const sinAjuste = ajusteCER
+                ? (amortiz + rentaNominal * residual / 100) * factor / 100
+                : monto;
             return {
                 fecha: crearFechaDesdeString(fechaISO),
-                monto: normalizarNumeroDesdeInput(c.pagosActualiz) || 0
+                monto,
+                sinAjuste,
+                ajuste: monto - sinAjuste
             };
         })
         .filter(p => p.fecha);
@@ -137,17 +149,24 @@ async function calcularDesglose() {
             precioCTAjustado = precioCT * cerDia / cerCompra;
         }
 
-        // I: Pagos efectuados actualizados (cupones con fecha liquidación < fecha)
-        const pagosActualizados = pagos
-            .filter(p => p.fecha < fecha)
-            .reduce((suma, p) => suma + p.monto, 0);
+        // Pagos efectuados (cupones con fecha liquidación < fecha), aperturados
+        const pagosEfectuados = pagos.filter(p => p.fecha < fecha);
+        const pagosActualizados = pagosEfectuados.reduce((suma, p) => suma + p.monto, 0);
+        // I: Pagos efectuados actualizados sin ajuste
+        const pagosSinAjuste = pagosEfectuados.reduce((suma, p) => suma + p.sinAjuste, 0);
+        // J: Pagos efectuados actualizados (parte de ajuste)
+        const pagosAjuste = pagosActualizados - pagosSinAjuste;
 
-        // J: Precio Ajustado - Pagos
+        // K: Precio C+T - Pagos sin ajuste
+        const precioCTPagos = precioCT - pagosSinAjuste;
+        // L: Precio C+T Ajustado - Pagos ajustados
+        const precioCTAjustPagosAjuste = precioCTAjustado - pagosAjuste;
+        // Precio final de la partida = C+T Ajustado - todos los pagos
         const precioAjustPagos = precioCTAjustado - pagosActualizados;
-        // L: Revalúo de ajuste acumulado (ADC)
-        const revaluoAjuste = precioAjustPagos - precioCT;
-        // K: Revalúo C+T del día / M: Diferencia del revalúo de ajuste del día
-        const revaluoCT = anterior ? precioCT - anterior.precioCT : 0;
+        // N: Revalúo de ajuste acumulado (ADC) = L - G
+        const revaluoAjuste = precioCTAjustPagosAjuste - precioCT;
+        // M: Revalúo C+T del día (sobre C+T - Pagos sin ajuste) / O: Diferencia del revalúo de ajuste del día
+        const revaluoCT = anterior ? precioCTPagos - anterior.precioCTPagos : 0;
         const difAjuste = anterior ? revaluoAjuste - anterior.revaluoAjuste : 0;
 
         const fila = {
@@ -157,6 +176,10 @@ async function calcularDesglose() {
             precioCT,
             precioCTAjustado,
             pagosActualizados,
+            pagosSinAjuste,
+            pagosAjuste,
+            precioCTPagos,
+            precioCTAjustPagosAjuste,
             precioAjustPagos,
             revaluoCT,
             revaluoAjuste,
@@ -186,6 +209,8 @@ async function calcularDesglose() {
             devengamientoTIR: ultima.precioCT - primera.precioCT,
             ajusteCER: ultima.precioCTAjustado - ultima.precioCT,
             pagos: ultima.pagosActualizados,
+            pagosSinAjuste: ultima.pagosSinAjuste,
+            pagosAjuste: ultima.pagosAjuste,
             adc: ultima.revaluoAjuste,
             precioFinal: ultima.precioAjustPagos,
             valuacionInicial: primera.valuacion,
@@ -216,7 +241,8 @@ function renderizarDesglose(desglose) {
         ['Precio Compra', fmt(desglose.precioCompra)],
         ['Devengamiento TIR', fmt(resumen.devengamientoTIR)],
         ajusteCER ? ['Ajuste CER', fmt(resumen.ajusteCER)] : null,
-        ['Pagos Efect. Actualizados', fmt(-resumen.pagos)],
+        ['Pagos sin Ajuste', fmt(-resumen.pagosSinAjuste)],
+        ajusteCER ? ['Pagos Ajustados', fmt(-resumen.pagosAjuste)] : null,
         ['Revalúo Ajuste (ADC)', fmt(resumen.adc)],
         ['Precio Ajustado - Pagos', fmt(resumen.precioFinal)],
         ['Valuación', formatearMonto(resumen.valuacionFinal)]
@@ -236,8 +262,10 @@ function renderizarDesglose(desglose) {
             <th ${columnasCER}>CER<br>del día</th>
             <th>Precio<br>C+T</th>
             <th ${columnasCER}>Precio C+T<br>Ajustado</th>
-            <th>Pagos Efect.<br>Actualizados</th>
-            <th>Precio Ajustado<br>- Pagos</th>
+            <th>Pagos Efect. Act.<br>sin Ajuste</th>
+            <th ${columnasCER}>Pagos Efect. Act.<br>Ajustados</th>
+            <th>Precio C+T<br>- Pagos</th>
+            <th ${columnasCER}>Precio C+T Ajust.<br>- Pagos Ajust.</th>
             <th>Revalúo<br>C+T</th>
             <th>Revalúo de<br>Ajuste (ADC)</th>
             <th>Diferencia<br>Rev. Ajuste</th>
@@ -246,7 +274,7 @@ function renderizarDesglose(desglose) {
         </tr>`;
 
     // Pie de tabla: sumatoria de "Revalúo C+T + Dif. Ajuste" sobre todo el período (no solo la página)
-    const columnasAntesSuma = ajusteCER ? 10 : 7;
+    const columnasAntesSuma = ajusteCER ? 12 : 7;
     document.getElementById('desgloseFoot').innerHTML = `
         <tr class="fila-total-desglose">
             <td colspan="${columnasAntesSuma}"></td>
@@ -296,8 +324,10 @@ function renderizarPaginaDesglose(pagina) {
             <td ${columnasCER}>${fmt(f.cerDia)}</td>
             <td>${fmt(f.precioCT)}</td>
             <td ${columnasCER}>${fmt(f.precioCTAjustado)}</td>
-            <td>${fmt(f.pagosActualizados)}</td>
-            <td>${fmt(f.precioAjustPagos)}</td>
+            <td>${fmt(f.pagosSinAjuste)}</td>
+            <td ${columnasCER}>${fmt(f.pagosAjuste)}</td>
+            <td>${fmt(f.precioCTPagos)}</td>
+            <td ${columnasCER}>${fmt(f.precioCTAjustPagosAjuste)}</td>
             <td>${fmt(f.revaluoCT)}</td>
             <td>${fmt(f.revaluoAjuste)}</td>
             <td>${fmt(f.difAjuste)}</td>
@@ -364,7 +394,11 @@ function exportarDesgloseCSV() {
     if (ajusteCER) encabezado.push('Fecha CER', 'CER del dia');
     encabezado.push('Precio C+T');
     if (ajusteCER) encabezado.push('Precio C+T Ajustado');
-    encabezado.push('Pagos Efect. Actualizados', 'Precio Ajustado - Pagos', 'Revaluo C+T',
+    encabezado.push('Pagos Efect. Act. sin Ajuste');
+    if (ajusteCER) encabezado.push('Pagos Efect. Act. Ajustados');
+    encabezado.push('Precio C+T - Pagos');
+    if (ajusteCER) encabezado.push('Precio C+T Ajustado - Pagos Ajustados');
+    encabezado.push('Precio Ajustado - Pagos', 'Revaluo C+T',
         'Revaluo de Ajuste (ADC)', 'Diferencia Rev. Ajuste', 'Revaluo C+T + Dif. Ajuste', 'Valuacion');
 
     const lineas = filas.map(f => {
@@ -372,7 +406,11 @@ function exportarDesgloseCSV() {
         if (ajusteCER) celdas.push(formatearFechaDDMMAAAA(f.fechaCER), num(f.cerDia));
         celdas.push(num(f.precioCT));
         if (ajusteCER) celdas.push(num(f.precioCTAjustado));
-        celdas.push(num(f.pagosActualizados), num(f.precioAjustPagos), num(f.revaluoCT),
+        celdas.push(num(f.pagosSinAjuste));
+        if (ajusteCER) celdas.push(num(f.pagosAjuste));
+        celdas.push(num(f.precioCTPagos));
+        if (ajusteCER) celdas.push(num(f.precioCTAjustPagosAjuste));
+        celdas.push(num(f.precioAjustPagos), num(f.revaluoCT),
             num(f.revaluoAjuste), num(f.difAjuste), num(f.revaluoTotal), num(Math.round(f.valuacion * 100) / 100));
         return celdas.join(';');
     });
