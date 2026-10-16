@@ -4,6 +4,18 @@ const https = require('https');
 
 const BCRA_API_URL = process.env.BCRA_API_URL || 'https://api.bcra.gob.ar/estadisticas/v4.0';
 
+// GET con reintento ante timeout (la API del BCRA a veces tarda más de lo normal)
+const getConReintento = async (url, config, intentos = 3) => {
+    for (let intento = 1; ; intento++) {
+        try {
+            return await axios.get(url, config);
+        } catch (error) {
+            if (error.code !== 'ECONNABORTED' || intento >= intentos) throw error;
+            console.warn(`[BCRA] Timeout (intento ${intento}/${intentos}), reintentando: ${url}`);
+        }
+    }
+};
+
 /**
  * Obtener datos de CER desde BCRA
  */
@@ -16,11 +28,11 @@ const obtenerCER = async (fechaDesde, fechaHasta) => {
         const fechaInicio = fechaDesdeDate < fechaMinima ? fechaMinima : fechaDesdeDate;
         
         const todosLosDatos = [];
-        let añoActual = fechaInicio.getFullYear();
-        const añoFin = fechaHastaDate.getFullYear();
+        let añoActual = fechaInicio.getUTCFullYear();
+        const añoFin = fechaHastaDate.getUTCFullYear();
         
         while (añoActual <= añoFin) {
-            let desdeAño = añoActual === fechaInicio.getFullYear() 
+            let desdeAño = añoActual === fechaInicio.getUTCFullYear() 
                 ? fechaDesde
                 : `${añoActual}-01-01`;
             
@@ -30,7 +42,7 @@ const obtenerCER = async (fechaDesde, fechaHasta) => {
             
             try {
                 console.log(`[CER] Consultando API para año ${añoActual}: desde=${desdeAño}, hasta=${hastaAño}`);
-                const response = await axios.get(`${BCRA_API_URL}/monetarias/30`, {
+                const response = await getConReintento(`${BCRA_API_URL}/monetarias/30`, {
                     params: {
                         desde: desdeAño,
                         hasta: hastaAño
@@ -38,7 +50,7 @@ const obtenerCER = async (fechaDesde, fechaHasta) => {
                     httpsAgent: new https.Agent({
                         rejectUnauthorized: false
                     }),
-                    timeout: 15000,
+                    timeout: 30000,
                     validateStatus: function (status) {
                         // No lanzar error para 4xx o 5xx, solo registrar
                         return true;
@@ -156,11 +168,11 @@ const obtenerTAMAR = async (fechaDesde, fechaHasta) => {
         const fechaInicio = fechaDesdeDate < fechaMinima ? fechaMinima : fechaDesdeDate;
         
         const todosLosDatos = [];
-        let añoActual = fechaInicio.getFullYear();
-        const añoFin = fechaHastaDate.getFullYear();
+        let añoActual = fechaInicio.getUTCFullYear();
+        const añoFin = fechaHastaDate.getUTCFullYear();
         
         while (añoActual <= añoFin) {
-            let desdeAño = añoActual === fechaInicio.getFullYear() 
+            let desdeAño = añoActual === fechaInicio.getUTCFullYear() 
                 ? fechaDesde
                 : `${añoActual}-01-01`;
             
@@ -285,11 +297,11 @@ const obtenerBADLAR = async (fechaDesde, fechaHasta) => {
         const fechaInicio = fechaDesdeDate < fechaMinima ? fechaMinima : fechaDesdeDate;
         
         const todosLosDatos = [];
-        let añoActual = fechaInicio.getFullYear();
-        const añoFin = fechaHastaDate.getFullYear();
+        let añoActual = fechaInicio.getUTCFullYear();
+        const añoFin = fechaHastaDate.getUTCFullYear();
         
         while (añoActual <= añoFin) {
-            let desdeAño = añoActual === fechaInicio.getFullYear() 
+            let desdeAño = añoActual === fechaInicio.getUTCFullYear() 
                 ? fechaDesde
                 : `${añoActual}-01-01`;
             

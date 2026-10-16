@@ -401,6 +401,8 @@ async function confirmarCargarCER() {
         // No recargar la página, los datos ya se muestran en cargarCER()
     } catch (error) {
         console.error('Error al cargar CER:', error);
+    } finally {
+        // Restaurar el botón del modal para permitir otra importación
         if (btnCargar) {
             btnCargar.disabled = false;
             btnCargar.innerHTML = 'Cargar';
